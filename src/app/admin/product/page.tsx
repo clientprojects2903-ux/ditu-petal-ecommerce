@@ -1,10 +1,8 @@
 'use client';
 
 import { supabase } from '@/lib/supabase';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import * as XLSX from 'xlsx';
-
-
 
 // Types based on DB schema
 interface Product {
@@ -51,19 +49,13 @@ interface ApiResponse<T> {
   error?: string;
 }
 
-// Image upload state interface
+// Image upload state interface with preview URLs
 interface ImageUploadState {
-  thumbnail: File | null;
-  heroImage1: File | null;
-  heroImage2: File | null;
-  heroImage3: File | null;
+  thumbnail: { file: File | null; preview: string | null };
+  heroImage1: { file: File | null; preview: string | null };
+  heroImage2: { file: File | null; preview: string | null };
+  heroImage3: { file: File | null; preview: string | null };
   uploading: boolean;
-  uploadProgress: {
-    thumbnail: number;
-    heroImage1: number;
-    heroImage2: number;
-    heroImage3: number;
-  };
 }
 
 export default function ProductsPage() {
@@ -97,19 +89,25 @@ export default function ProductsPage() {
   });
   const [apiError, setApiError] = useState<string | null>(null);
 
-  // Image upload states
-  const [imageUpload, setImageUpload] = useState<ImageUploadState>({
-    thumbnail: null,
-    heroImage1: null,
-    heroImage2: null,
-    heroImage3: null,
+  // Refs to maintain focus
+  const editFormRef = useRef<HTMLDivElement>(null);
+  const addFormRef = useRef<HTMLDivElement>(null);
+
+  // Image upload states with preview support
+  const [editImageUpload, setEditImageUpload] = useState<ImageUploadState>({
+    thumbnail: { file: null, preview: null },
+    heroImage1: { file: null, preview: null },
+    heroImage2: { file: null, preview: null },
+    heroImage3: { file: null, preview: null },
     uploading: false,
-    uploadProgress: {
-      thumbnail: 0,
-      heroImage1: 0,
-      heroImage2: 0,
-      heroImage3: 0,
-    }
+  });
+
+  const [addImageUpload, setAddImageUpload] = useState<ImageUploadState>({
+    thumbnail: { file: null, preview: null },
+    heroImage1: { file: null, preview: null },
+    heroImage2: { file: null, preview: null },
+    heroImage3: { file: null, preview: null },
+    uploading: false,
   });
 
   // Fetch products
@@ -117,6 +115,47 @@ export default function ProductsPage() {
     fetchProducts();
     fetchCategories();
   }, []);
+
+  // Reset edit form when modal closes
+  useEffect(() => {
+    if (!isEditModalOpen) {
+      setEditImageUpload({
+        thumbnail: { file: null, preview: null },
+        heroImage1: { file: null, preview: null },
+        heroImage2: { file: null, preview: null },
+        heroImage3: { file: null, preview: null },
+        uploading: false,
+      });
+    }
+  }, [isEditModalOpen]);
+
+  // Reset add form when modal closes
+  useEffect(() => {
+    if (!isAddModalOpen) {
+      setAddImageUpload({
+        thumbnail: { file: null, preview: null },
+        heroImage1: { file: null, preview: null },
+        heroImage2: { file: null, preview: null },
+        heroImage3: { file: null, preview: null },
+        uploading: false,
+      });
+      setAddFormData({
+        name: '',
+        slug: '',
+        description: '',
+        short_description: '',
+        price: 0,
+        stock: 0,
+        is_active: true,
+        is_featured: false,
+        drainage_hole: true,
+        thumbnail: '',
+        hero_image_1: '',
+        hero_image_2: '',
+        hero_image_3: '',
+      });
+    }
+  }, [isAddModalOpen]);
 
   const fetchProducts = async () => {
     try {
@@ -158,15 +197,13 @@ export default function ProductsPage() {
     }
   };
 
-  // Image upload function - Updated bucket name to 'product-images'
+  // Image upload function
   const uploadImage = async (file: File, bucket: string = 'product-images', path: string = ''): Promise<string | null> => {
     try {
-      // Generate a unique filename
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
       const filePath = path ? `${path}/${fileName}` : fileName;
 
-      // Upload to Supabase
       const { data, error } = await supabase.storage
         .from(bucket)
         .upload(filePath, file, {
@@ -178,7 +215,6 @@ export default function ProductsPage() {
         throw error;
       }
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from(bucket)
         .getPublicUrl(filePath);
@@ -191,40 +227,98 @@ export default function ProductsPage() {
     }
   };
 
-  // Handle file selection
-  const handleFileSelect = useCallback((
+  // Handle file selection for edit modal
+  const handleEditFileSelect = useCallback((
     type: keyof Pick<ImageUploadState, 'thumbnail' | 'heroImage1' | 'heroImage2' | 'heroImage3'>, 
     file: File | null
   ) => {
-    setImageUpload(prev => ({
-      ...prev,
-      [type]: file
-    }));
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setEditImageUpload(prev => ({
+          ...prev,
+          [type]: { file, preview: reader.result as string }
+        }));
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setEditImageUpload(prev => ({
+        ...prev,
+        [type]: { file: null, preview: null }
+      }));
+    }
   }, []);
 
-  // Upload all images for add product - Updated bucket path
-  const uploadAllImages = async (): Promise<Partial<Product>> => {
+  // Handle file selection for add modal
+  const handleAddFileSelect = useCallback((
+    type: keyof Pick<ImageUploadState, 'thumbnail' | 'heroImage1' | 'heroImage2' | 'heroImage3'>, 
+    file: File | null
+  ) => {
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAddImageUpload(prev => ({
+          ...prev,
+          [type]: { file, preview: reader.result as string }
+        }));
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setAddImageUpload(prev => ({
+        ...prev,
+        [type]: { file: null, preview: null }
+      }));
+    }
+  }, []);
+
+  // Upload all images for edit product
+  const uploadEditImages = async (): Promise<Partial<Product>> => {
     const imageUrls: Partial<Product> = {};
     
-    // Upload thumbnail
-    if (imageUpload.thumbnail) {
-      const url = await uploadImage(imageUpload.thumbnail, 'product-images', 'thumbnails');
+    if (editImageUpload.thumbnail.file) {
+      const url = await uploadImage(editImageUpload.thumbnail.file, 'product-images', 'thumbnails');
       if (url) imageUrls.thumbnail = url;
     }
 
-    // Upload hero images
-    if (imageUpload.heroImage1) {
-      const url = await uploadImage(imageUpload.heroImage1, 'product-images', 'hero-images');
+    if (editImageUpload.heroImage1.file) {
+      const url = await uploadImage(editImageUpload.heroImage1.file, 'product-images', 'hero-images');
       if (url) imageUrls.hero_image_1 = url;
     }
 
-    if (imageUpload.heroImage2) {
-      const url = await uploadImage(imageUpload.heroImage2, 'product-images', 'hero-images');
+    if (editImageUpload.heroImage2.file) {
+      const url = await uploadImage(editImageUpload.heroImage2.file, 'product-images', 'hero-images');
       if (url) imageUrls.hero_image_2 = url;
     }
 
-    if (imageUpload.heroImage3) {
-      const url = await uploadImage(imageUpload.heroImage3, 'product-images', 'hero-images');
+    if (editImageUpload.heroImage3.file) {
+      const url = await uploadImage(editImageUpload.heroImage3.file, 'product-images', 'hero-images');
+      if (url) imageUrls.hero_image_3 = url;
+    }
+
+    return imageUrls;
+  };
+
+  // Upload all images for add product
+  const uploadAddImages = async (): Promise<Partial<Product>> => {
+    const imageUrls: Partial<Product> = {};
+    
+    if (addImageUpload.thumbnail.file) {
+      const url = await uploadImage(addImageUpload.thumbnail.file, 'product-images', 'thumbnails');
+      if (url) imageUrls.thumbnail = url;
+    }
+
+    if (addImageUpload.heroImage1.file) {
+      const url = await uploadImage(addImageUpload.heroImage1.file, 'product-images', 'hero-images');
+      if (url) imageUrls.hero_image_1 = url;
+    }
+
+    if (addImageUpload.heroImage2.file) {
+      const url = await uploadImage(addImageUpload.heroImage2.file, 'product-images', 'hero-images');
+      if (url) imageUrls.hero_image_2 = url;
+    }
+
+    if (addImageUpload.heroImage3.file) {
+      const url = await uploadImage(addImageUpload.heroImage3.file, 'product-images', 'hero-images');
       if (url) imageUrls.hero_image_3 = url;
     }
 
@@ -272,22 +366,28 @@ export default function ProductsPage() {
     XLSX.writeFile(wb, `products_export_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
-  // Handle Edit - Fixed to prevent re-rendering issues
+  // Handle Edit
   const handleEdit = (product: Product) => {
     setSelectedProduct(product);
     setEditFormData(product);
+    setEditImageUpload({
+      thumbnail: { file: null, preview: null },
+      heroImage1: { file: null, preview: null },
+      heroImage2: { file: null, preview: null },
+      heroImage3: { file: null, preview: null },
+      uploading: false,
+    });
     setIsEditModalOpen(true);
     setApiError(null);
   };
 
-  // Fixed edit form handlers to prevent re-rendering issues
+  // Handle edit input changes with focus preservation
   const handleEditInputChange = useCallback((
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value, type } = e.target;
     
     setEditFormData(prev => {
-      // Handle different input types
       if (type === 'checkbox') {
         const checkbox = e.target as HTMLInputElement;
         return { ...prev, [name]: checkbox.checked };
@@ -315,11 +415,10 @@ export default function ProductsPage() {
     try {
       setLoading(true);
       setApiError(null);
+      setEditImageUpload(prev => ({ ...prev, uploading: true }));
       
-      // Upload new images if selected
-      const uploadedImageUrls = await uploadAllImages();
+      const uploadedImageUrls = await uploadEditImages();
       
-      // Merge uploaded image URLs with existing form data
       const updatedFormData = {
         ...editFormData,
         ...uploadedImageUrls
@@ -331,8 +430,6 @@ export default function ProductsPage() {
         ...updateData,
         updated_at: new Date().toISOString()
       };
-      
-      console.log('Updating product with data:', dataToSend);
       
       const response = await fetch(`/api/products/${selectedProduct.id}`, {
         method: 'PUT',
@@ -349,23 +446,6 @@ export default function ProductsPage() {
         throw new Error(errorMessage);
       }
 
-      console.log('Update successful:', responseData);
-      
-      // Reset image upload state
-      setImageUpload({
-        thumbnail: null,
-        heroImage1: null,
-        heroImage2: null,
-        heroImage3: null,
-        uploading: false,
-        uploadProgress: {
-          thumbnail: 0,
-          heroImage1: 0,
-          heroImage2: 0,
-          heroImage3: 0,
-        }
-      });
-      
       await fetchProducts();
       setIsEditModalOpen(false);
       setSelectedProduct(null);
@@ -376,6 +456,7 @@ export default function ProductsPage() {
       console.error('Error updating product:', err);
     } finally {
       setLoading(false);
+      setEditImageUpload(prev => ({ ...prev, uploading: false }));
     }
   };
 
@@ -442,17 +523,14 @@ export default function ProductsPage() {
     try {
       setLoading(true);
       setApiError(null);
+      setAddImageUpload(prev => ({ ...prev, uploading: true }));
       
-      // Validate required fields
       if (!addFormData.name || !addFormData.slug || !addFormData.price) {
         throw new Error('Name, slug, and price are required fields');
       }
 
-      // Upload images first
-      setImageUpload(prev => ({ ...prev, uploading: true }));
-      const uploadedImageUrls = await uploadAllImages();
+      const uploadedImageUrls = await uploadAddImages();
       
-      // Merge form data with uploaded image URLs
       const productData = {
         ...addFormData,
         ...uploadedImageUrls
@@ -475,44 +553,15 @@ export default function ProductsPage() {
         throw new Error(errorMessage);
       }
 
-      // Reset form and image upload state
-      setImageUpload({
-        thumbnail: null,
-        heroImage1: null,
-        heroImage2: null,
-        heroImage3: null,
-        uploading: false,
-        uploadProgress: {
-          thumbnail: 0,
-          heroImage1: 0,
-          heroImage2: 0,
-          heroImage3: 0,
-        }
-      });
-      
       await fetchProducts();
       setIsAddModalOpen(false);
-      setAddFormData({
-        name: '',
-        slug: '',
-        description: '',
-        short_description: '',
-        price: 0,
-        stock: 0,
-        is_active: true,
-        is_featured: false,
-        drainage_hole: true,
-        thumbnail: '',
-        hero_image_1: '',
-        hero_image_2: '',
-        hero_image_3: '',
-      });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create product';
       setApiError(errorMessage);
       console.error('Error creating product:', err);
     } finally {
       setLoading(false);
+      setAddImageUpload(prev => ({ ...prev, uploading: false }));
     }
   };
 
@@ -524,45 +573,42 @@ export default function ProductsPage() {
       .replace(/(^-|-$)+/g, '');
   };
 
-  // Image Upload Component - Memoized to prevent unnecessary re-renders
+  // Image Upload Component - Memoized with proper focus handling
   const ImageUploadField = React.memo(({ 
     label, 
     type, 
     currentImageUrl,
-    onFileSelect 
+    imageState,
+    onFileSelect
   }: { 
     label: string; 
     type: keyof Pick<ImageUploadState, 'thumbnail' | 'heroImage1' | 'heroImage2' | 'heroImage3'>;
     currentImageUrl?: string | null;
+    imageState: { file: File | null; preview: string | null };
     onFileSelect: (type: any, file: File | null) => void;
   }) => {
-    const [preview, setPreview] = useState<string | null>(null);
+    const inputId = `file-${type}-${Math.random().toString(36).substr(2, 9)}`;
 
     const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0] || null;
       onFileSelect(type, file);
-      
-      if (file) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setPreview(reader.result as string);
-        };
-        reader.readAsDataURL(file);
-      } else {
-        setPreview(null);
-      }
     }, [type, onFileSelect]);
 
+    // Determine which image to show
+    const imageToShow = imageState.preview || currentImageUrl;
+
     return (
-      <div className="mb-4">
+      <div className="mb-4" onClick={(e) => e.stopPropagation()}>
         <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
         <div className="flex items-start space-x-4">
           {/* Preview */}
-          <div className="w-24 h-24 border rounded-lg overflow-hidden bg-gray-100">
-            {preview ? (
-              <img src={preview} alt="Preview" className="w-full h-full object-cover" />
-            ) : currentImageUrl ? (
-              <img src={currentImageUrl} alt="Current" className="w-full h-full object-cover" />
+          <div className="w-24 h-24 border rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+            {imageToShow ? (
+              <img 
+                src={imageToShow} 
+                alt="Preview" 
+                className="w-full h-full object-cover"
+              />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-gray-400">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -576,17 +622,20 @@ export default function ProductsPage() {
           <div className="flex-1">
             <input
               type="file"
-              id={`file-${type}`}
+              id={inputId}
               accept="image/*"
               onChange={handleFileChange}
               className="hidden"
             />
             <label
-              htmlFor={`file-${type}`}
+              htmlFor={inputId}
               className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer"
             >
               Choose File
             </label>
+            {imageState.file && (
+              <span className="ml-2 text-sm text-green-600">New file selected</span>
+            )}
           </div>
         </div>
       </div>
@@ -595,8 +644,16 @@ export default function ProductsPage() {
 
   ImageUploadField.displayName = 'ImageUploadField';
 
-  // Modal Component
+  // Modal Component with focus trap
   const Modal = ({ isOpen, onClose, title, children }: any) => {
+    const modalRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      if (isOpen && modalRef.current) {
+        modalRef.current.focus();
+      }
+    }, [isOpen]);
+
     if (!isOpen) return null;
 
     return (
@@ -607,18 +664,26 @@ export default function ProductsPage() {
         />
         
         <div className="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
-          <div className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-4xl">
+          <div 
+            ref={modalRef}
+            tabIndex={-1}
+            className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-4xl outline-none"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-medium leading-6 text-gray-900">{title}</h3>
                 <button 
                   onClick={onClose} 
                   className="rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none"
+                  type="button"
                 >
                   <span className="text-2xl">&times;</span>
                 </button>
               </div>
-              {children}
+              <div onClick={(e) => e.stopPropagation()}>
+                {children}
+              </div>
             </div>
           </div>
         </div>
@@ -945,9 +1010,308 @@ export default function ProductsPage() {
         )}
       </Modal>
 
-      {/* Edit Product Modal - Fixed with proper input handling */}
+      {/* Edit Product Modal */}
       <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Product">
-        {selectedProduct && (
+        <div ref={editFormRef} onClick={(e) => e.stopPropagation()}>
+          {selectedProduct && (
+            <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+              {/* API Error Message */}
+              {apiError && (
+                <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm">
+                  <strong>Error:</strong> {apiError}
+                </div>
+              )}
+
+              {/* Image Upload Fields with Preview */}
+              <div className="border-b pb-4 mb-4">
+                <h4 className="text-md font-medium text-gray-900 mb-4">Product Images</h4>
+                
+                <ImageUploadField
+                  label="Thumbnail"
+                  type="thumbnail"
+                  currentImageUrl={editFormData.thumbnail}
+                  imageState={editImageUpload.thumbnail}
+                  onFileSelect={handleEditFileSelect}
+                />
+                
+                <ImageUploadField
+                  label="Hero Image 1"
+                  type="heroImage1"
+                  currentImageUrl={editFormData.hero_image_1}
+                  imageState={editImageUpload.heroImage1}
+                  onFileSelect={handleEditFileSelect}
+                />
+                
+                <ImageUploadField
+                  label="Hero Image 2"
+                  type="heroImage2"
+                  currentImageUrl={editFormData.hero_image_2}
+                  imageState={editImageUpload.heroImage2}
+                  onFileSelect={handleEditFileSelect}
+                />
+                
+                <ImageUploadField
+                  label="Hero Image 3"
+                  type="heroImage3"
+                  currentImageUrl={editFormData.hero_image_3}
+                  imageState={editImageUpload.heroImage3}
+                  onFileSelect={handleEditFileSelect}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="edit-name" className="block text-sm font-medium text-gray-700">Name</label>
+                <input
+                  type="text"
+                  id="edit-name"
+                  name="name"
+                  value={editFormData.name || ''}
+                  onChange={handleEditNameChange}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="edit-slug" className="block text-sm font-medium text-gray-700">Slug</label>
+                <input
+                  type="text"
+                  id="edit-slug"
+                  name="slug"
+                  value={editFormData.slug || ''}
+                  onChange={handleEditInputChange}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="edit-category" className="block text-sm font-medium text-gray-700">Category</label>
+                <select
+                  id="edit-category"
+                  name="category_id"
+                  value={editFormData.category_id || ''}
+                  onChange={handleEditInputChange}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Select a category</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>{category.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="edit-price" className="block text-sm font-medium text-gray-700">Price</label>
+                  <input
+                    type="number"
+                    id="edit-price"
+                    name="price"
+                    step="0.01"
+                    value={editFormData.price || ''}
+                    onChange={handleEditInputChange}
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="edit-compare_price" className="block text-sm font-medium text-gray-700">Compare Price</label>
+                  <input
+                    type="number"
+                    id="edit-compare_price"
+                    name="compare_price"
+                    step="0.01"
+                    value={editFormData.compare_price || ''}
+                    onChange={handleEditInputChange}
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="edit-stock" className="block text-sm font-medium text-gray-700">Stock</label>
+                <input
+                  type="number"
+                  id="edit-stock"
+                  name="stock"
+                  value={editFormData.stock || ''}
+                  onChange={handleEditInputChange}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="edit-description" className="block text-sm font-medium text-gray-700">Description</label>
+                <textarea
+                  id="edit-description"
+                  name="description"
+                  rows={3}
+                  value={editFormData.description || ''}
+                  onChange={handleEditInputChange}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="edit-short_description" className="block text-sm font-medium text-gray-700">Short Description</label>
+                <textarea
+                  id="edit-short_description"
+                  name="short_description"
+                  rows={2}
+                  value={editFormData.short_description || ''}
+                  onChange={handleEditInputChange}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="edit-material" className="block text-sm font-medium text-gray-700">Material</label>
+                  <input
+                    type="text"
+                    id="edit-material"
+                    name="material"
+                    value={editFormData.material || ''}
+                    onChange={handleEditInputChange}
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="edit-color" className="block text-sm font-medium text-gray-700">Color</label>
+                  <input
+                    type="text"
+                    id="edit-color"
+                    name="color"
+                    value={editFormData.color || ''}
+                    onChange={handleEditInputChange}
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="edit-size" className="block text-sm font-medium text-gray-700">Size</label>
+                  <input
+                    type="text"
+                    id="edit-size"
+                    name="size"
+                    value={editFormData.size || ''}
+                    onChange={handleEditInputChange}
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="edit-height_cm" className="block text-sm font-medium text-gray-700">Height (cm)</label>
+                  <input
+                    type="number"
+                    id="edit-height_cm"
+                    name="height_cm"
+                    step="0.1"
+                    value={editFormData.height_cm || ''}
+                    onChange={handleEditInputChange}
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="edit-diameter_cm" className="block text-sm font-medium text-gray-700">Diameter (cm)</label>
+                  <input
+                    type="number"
+                    id="edit-diameter_cm"
+                    name="diameter_cm"
+                    step="0.1"
+                    value={editFormData.diameter_cm || ''}
+                    onChange={handleEditInputChange}
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="edit-weight_kg" className="block text-sm font-medium text-gray-700">Weight (kg)</label>
+                  <input
+                    type="number"
+                    id="edit-weight_kg"
+                    name="weight_kg"
+                    step="0.1"
+                    value={editFormData.weight_kg || ''}
+                    onChange={handleEditInputChange}
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="edit-suitable_for" className="block text-sm font-medium text-gray-700">Suitable For</label>
+                <input
+                  type="text"
+                  id="edit-suitable_for"
+                  name="suitable_for"
+                  value={editFormData.suitable_for || ''}
+                  onChange={handleEditInputChange}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    name="drainage_hole"
+                    checked={editFormData.drainage_hole || false}
+                    onChange={handleEditInputChange}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">Drainage Hole</span>
+                </label>
+
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    name="is_active"
+                    checked={editFormData.is_active || false}
+                    onChange={handleEditInputChange}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">Active</span>
+                </label>
+
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    name="is_featured"
+                    checked={editFormData.is_featured || false}
+                    onChange={handleEditInputChange}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">Featured</span>
+                </label>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  type="button"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleEditSubmit}
+                  disabled={loading || editImageUpload.uploading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  type="button"
+                >
+                  {loading || editImageUpload.uploading ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      {/* Add Product Modal */}
+      <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Add New Product">
+        <div ref={addFormRef} onClick={(e) => e.stopPropagation()}>
           <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
             {/* API Error Message */}
             {apiError && (
@@ -956,70 +1320,72 @@ export default function ProductsPage() {
               </div>
             )}
 
-            {/* Image Upload Fields */}
+            {/* Image Upload Fields for Add */}
             <div className="border-b pb-4 mb-4">
               <h4 className="text-md font-medium text-gray-900 mb-4">Product Images</h4>
               
               <ImageUploadField
-                label="Thumbnail"
+                label="Thumbnail *"
                 type="thumbnail"
-                currentImageUrl={editFormData.thumbnail}
-                onFileSelect={handleFileSelect}
+                imageState={addImageUpload.thumbnail}
+                onFileSelect={handleAddFileSelect}
               />
               
               <ImageUploadField
                 label="Hero Image 1"
                 type="heroImage1"
-                currentImageUrl={editFormData.hero_image_1}
-                onFileSelect={handleFileSelect}
+                imageState={addImageUpload.heroImage1}
+                onFileSelect={handleAddFileSelect}
               />
               
               <ImageUploadField
                 label="Hero Image 2"
                 type="heroImage2"
-                currentImageUrl={editFormData.hero_image_2}
-                onFileSelect={handleFileSelect}
+                imageState={addImageUpload.heroImage2}
+                onFileSelect={handleAddFileSelect}
               />
               
               <ImageUploadField
                 label="Hero Image 3"
                 type="heroImage3"
-                currentImageUrl={editFormData.hero_image_3}
-                onFileSelect={handleFileSelect}
+                imageState={addImageUpload.heroImage3}
+                onFileSelect={handleAddFileSelect}
               />
             </div>
 
             <div>
-              <label htmlFor="edit-name" className="block text-sm font-medium text-gray-700">Name</label>
+              <label htmlFor="add-name" className="block text-sm font-medium text-gray-700">Name *</label>
               <input
                 type="text"
-                id="edit-name"
+                id="add-name"
                 name="name"
-                value={editFormData.name || ''}
-                onChange={handleEditNameChange}
+                value={addFormData.name || ''}
+                onChange={handleAddNameChange}
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                required
               />
             </div>
 
             <div>
-              <label htmlFor="edit-slug" className="block text-sm font-medium text-gray-700">Slug</label>
+              <label htmlFor="add-slug" className="block text-sm font-medium text-gray-700">Slug *</label>
               <input
                 type="text"
-                id="edit-slug"
+                id="add-slug"
                 name="slug"
-                value={editFormData.slug || ''}
-                onChange={handleEditInputChange}
+                value={addFormData.slug || ''}
+                onChange={handleAddInputChange}
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                required
               />
             </div>
 
             <div>
-              <label htmlFor="edit-category" className="block text-sm font-medium text-gray-700">Category</label>
+              <label htmlFor="add-category" className="block text-sm font-medium text-gray-700">Category</label>
               <select
-                id="edit-category"
+                id="add-category"
                 name="category_id"
-                value={editFormData.category_id || ''}
-                onChange={handleEditInputChange}
+                value={addFormData.category_id || ''}
+                onChange={handleAddInputChange}
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="">Select a category</option>
@@ -1031,87 +1397,88 @@ export default function ProductsPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="edit-price" className="block text-sm font-medium text-gray-700">Price</label>
+                <label htmlFor="add-price" className="block text-sm font-medium text-gray-700">Price *</label>
                 <input
                   type="number"
-                  id="edit-price"
+                  id="add-price"
                   name="price"
                   step="0.01"
-                  value={editFormData.price || ''}
-                  onChange={handleEditInputChange}
+                  value={addFormData.price || ''}
+                  onChange={handleAddInputChange}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  required
                 />
               </div>
               <div>
-                <label htmlFor="edit-compare_price" className="block text-sm font-medium text-gray-700">Compare Price</label>
+                <label htmlFor="add-compare_price" className="block text-sm font-medium text-gray-700">Compare Price</label>
                 <input
                   type="number"
-                  id="edit-compare_price"
+                  id="add-compare_price"
                   name="compare_price"
                   step="0.01"
-                  value={editFormData.compare_price || ''}
-                  onChange={handleEditInputChange}
+                  value={addFormData.compare_price || ''}
+                  onChange={handleAddInputChange}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="edit-stock" className="block text-sm font-medium text-gray-700">Stock</label>
+              <label htmlFor="add-stock" className="block text-sm font-medium text-gray-700">Stock</label>
               <input
                 type="number"
-                id="edit-stock"
+                id="add-stock"
                 name="stock"
-                value={editFormData.stock || ''}
-                onChange={handleEditInputChange}
+                value={addFormData.stock || ''}
+                onChange={handleAddInputChange}
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
 
             <div>
-              <label htmlFor="edit-description" className="block text-sm font-medium text-gray-700">Description</label>
+              <label htmlFor="add-description" className="block text-sm font-medium text-gray-700">Description</label>
               <textarea
-                id="edit-description"
+                id="add-description"
                 name="description"
                 rows={3}
-                value={editFormData.description || ''}
-                onChange={handleEditInputChange}
+                value={addFormData.description || ''}
+                onChange={handleAddInputChange}
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
 
             <div>
-              <label htmlFor="edit-short_description" className="block text-sm font-medium text-gray-700">Short Description</label>
+              <label htmlFor="add-short_description" className="block text-sm font-medium text-gray-700">Short Description</label>
               <textarea
-                id="edit-short_description"
+                id="add-short_description"
                 name="short_description"
                 rows={2}
-                value={editFormData.short_description || ''}
-                onChange={handleEditInputChange}
+                value={addFormData.short_description || ''}
+                onChange={handleAddInputChange}
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="edit-material" className="block text-sm font-medium text-gray-700">Material</label>
+                <label htmlFor="add-material" className="block text-sm font-medium text-gray-700">Material</label>
                 <input
                   type="text"
-                  id="edit-material"
+                  id="add-material"
                   name="material"
-                  value={editFormData.material || ''}
-                  onChange={handleEditInputChange}
+                  value={addFormData.material || ''}
+                  onChange={handleAddInputChange}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
               <div>
-                <label htmlFor="edit-color" className="block text-sm font-medium text-gray-700">Color</label>
+                <label htmlFor="add-color" className="block text-sm font-medium text-gray-700">Color</label>
                 <input
                   type="text"
-                  id="edit-color"
+                  id="add-color"
                   name="color"
-                  value={editFormData.color || ''}
-                  onChange={handleEditInputChange}
+                  value={addFormData.color || ''}
+                  onChange={handleAddInputChange}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
@@ -1119,25 +1486,25 @@ export default function ProductsPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="edit-size" className="block text-sm font-medium text-gray-700">Size</label>
+                <label htmlFor="add-size" className="block text-sm font-medium text-gray-700">Size</label>
                 <input
                   type="text"
-                  id="edit-size"
+                  id="add-size"
                   name="size"
-                  value={editFormData.size || ''}
-                  onChange={handleEditInputChange}
+                  value={addFormData.size || ''}
+                  onChange={handleAddInputChange}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
               <div>
-                <label htmlFor="edit-height_cm" className="block text-sm font-medium text-gray-700">Height (cm)</label>
+                <label htmlFor="add-height_cm" className="block text-sm font-medium text-gray-700">Height (cm)</label>
                 <input
                   type="number"
-                  id="edit-height_cm"
+                  id="add-height_cm"
                   name="height_cm"
                   step="0.1"
-                  value={editFormData.height_cm || ''}
-                  onChange={handleEditInputChange}
+                  value={addFormData.height_cm || ''}
+                  onChange={handleAddInputChange}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
@@ -1145,39 +1512,39 @@ export default function ProductsPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="edit-diameter_cm" className="block text-sm font-medium text-gray-700">Diameter (cm)</label>
+                <label htmlFor="add-diameter_cm" className="block text-sm font-medium text-gray-700">Diameter (cm)</label>
                 <input
                   type="number"
-                  id="edit-diameter_cm"
+                  id="add-diameter_cm"
                   name="diameter_cm"
                   step="0.1"
-                  value={editFormData.diameter_cm || ''}
-                  onChange={handleEditInputChange}
+                  value={addFormData.diameter_cm || ''}
+                  onChange={handleAddInputChange}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
               <div>
-                <label htmlFor="edit-weight_kg" className="block text-sm font-medium text-gray-700">Weight (kg)</label>
+                <label htmlFor="add-weight_kg" className="block text-sm font-medium text-gray-700">Weight (kg)</label>
                 <input
                   type="number"
-                  id="edit-weight_kg"
+                  id="add-weight_kg"
                   name="weight_kg"
                   step="0.1"
-                  value={editFormData.weight_kg || ''}
-                  onChange={handleEditInputChange}
+                  value={addFormData.weight_kg || ''}
+                  onChange={handleAddInputChange}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="edit-suitable_for" className="block text-sm font-medium text-gray-700">Suitable For</label>
+              <label htmlFor="add-suitable_for" className="block text-sm font-medium text-gray-700">Suitable For</label>
               <input
                 type="text"
-                id="edit-suitable_for"
+                id="add-suitable_for"
                 name="suitable_for"
-                value={editFormData.suitable_for || ''}
-                onChange={handleEditInputChange}
+                value={addFormData.suitable_for || ''}
+                onChange={handleAddInputChange}
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -1187,8 +1554,8 @@ export default function ProductsPage() {
                 <input
                   type="checkbox"
                   name="drainage_hole"
-                  checked={editFormData.drainage_hole || false}
-                  onChange={handleEditInputChange}
+                  checked={addFormData.drainage_hole || false}
+                  onChange={handleAddInputChange}
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
                 <span className="ml-2 text-sm text-gray-700">Drainage Hole</span>
@@ -1198,8 +1565,8 @@ export default function ProductsPage() {
                 <input
                   type="checkbox"
                   name="is_active"
-                  checked={editFormData.is_active || false}
-                  onChange={handleEditInputChange}
+                  checked={addFormData.is_active || false}
+                  onChange={handleAddInputChange}
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
                 <span className="ml-2 text-sm text-gray-700">Active</span>
@@ -1209,8 +1576,8 @@ export default function ProductsPage() {
                 <input
                   type="checkbox"
                   name="is_featured"
-                  checked={editFormData.is_featured || false}
-                  onChange={handleEditInputChange}
+                  checked={addFormData.is_featured || false}
+                  onChange={handleAddInputChange}
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
                 <span className="ml-2 text-sm text-gray-700">Featured</span>
@@ -1219,307 +1586,21 @@ export default function ProductsPage() {
 
             <div className="flex justify-end space-x-3 pt-4">
               <button
-                onClick={() => setIsEditModalOpen(false)}
+                onClick={() => setIsAddModalOpen(false)}
                 className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                type="button"
               >
                 Cancel
               </button>
               <button
-                onClick={handleEditSubmit}
-                disabled={loading}
+                onClick={handleAddSubmit}
+                disabled={loading || addImageUpload.uploading}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                type="button"
               >
-                {loading ? 'Saving...' : 'Save Changes'}
+                {loading || addImageUpload.uploading ? 'Adding...' : 'Add Product'}
               </button>
             </div>
-          </div>
-        )}
-      </Modal>
-
-      {/* Add Product Modal - Fixed with proper input handling */}
-      <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Add New Product">
-        <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-          {/* API Error Message */}
-          {apiError && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm">
-              <strong>Error:</strong> {apiError}
-            </div>
-          )}
-
-          {/* Image Upload Fields for Add */}
-          <div className="border-b pb-4 mb-4">
-            <h4 className="text-md font-medium text-gray-900 mb-4">Product Images</h4>
-            
-            <ImageUploadField
-              label="Thumbnail *"
-              type="thumbnail"
-              onFileSelect={handleFileSelect}
-            />
-            
-            <ImageUploadField
-              label="Hero Image 1"
-              type="heroImage1"
-              onFileSelect={handleFileSelect}
-            />
-            
-            <ImageUploadField
-              label="Hero Image 2"
-              type="heroImage2"
-              onFileSelect={handleFileSelect}
-            />
-            
-            <ImageUploadField
-              label="Hero Image 3"
-              type="heroImage3"
-              onFileSelect={handleFileSelect}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="add-name" className="block text-sm font-medium text-gray-700">Name *</label>
-            <input
-              type="text"
-              id="add-name"
-              name="name"
-              value={addFormData.name || ''}
-              onChange={handleAddNameChange}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="add-slug" className="block text-sm font-medium text-gray-700">Slug *</label>
-            <input
-              type="text"
-              id="add-slug"
-              name="slug"
-              value={addFormData.slug || ''}
-              onChange={handleAddInputChange}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="add-category" className="block text-sm font-medium text-gray-700">Category</label>
-            <select
-              id="add-category"
-              name="category_id"
-              value={addFormData.category_id || ''}
-              onChange={handleAddInputChange}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">Select a category</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>{category.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="add-price" className="block text-sm font-medium text-gray-700">Price *</label>
-              <input
-                type="number"
-                id="add-price"
-                name="price"
-                step="0.01"
-                value={addFormData.price || ''}
-                onChange={handleAddInputChange}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                required
-              />
-            </div>
-            <div>
-              <label htmlFor="add-compare_price" className="block text-sm font-medium text-gray-700">Compare Price</label>
-              <input
-                type="number"
-                id="add-compare_price"
-                name="compare_price"
-                step="0.01"
-                value={addFormData.compare_price || ''}
-                onChange={handleAddInputChange}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="add-stock" className="block text-sm font-medium text-gray-700">Stock</label>
-            <input
-              type="number"
-              id="add-stock"
-              name="stock"
-              value={addFormData.stock || ''}
-              onChange={handleAddInputChange}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="add-description" className="block text-sm font-medium text-gray-700">Description</label>
-            <textarea
-              id="add-description"
-              name="description"
-              rows={3}
-              value={addFormData.description || ''}
-              onChange={handleAddInputChange}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="add-short_description" className="block text-sm font-medium text-gray-700">Short Description</label>
-            <textarea
-              id="add-short_description"
-              name="short_description"
-              rows={2}
-              value={addFormData.short_description || ''}
-              onChange={handleAddInputChange}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="add-material" className="block text-sm font-medium text-gray-700">Material</label>
-              <input
-                type="text"
-                id="add-material"
-                name="material"
-                value={addFormData.material || ''}
-                onChange={handleAddInputChange}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-            <div>
-              <label htmlFor="add-color" className="block text-sm font-medium text-gray-700">Color</label>
-              <input
-                type="text"
-                id="add-color"
-                name="color"
-                value={addFormData.color || ''}
-                onChange={handleAddInputChange}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="add-size" className="block text-sm font-medium text-gray-700">Size</label>
-              <input
-                type="text"
-                id="add-size"
-                name="size"
-                value={addFormData.size || ''}
-                onChange={handleAddInputChange}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-            <div>
-              <label htmlFor="add-height_cm" className="block text-sm font-medium text-gray-700">Height (cm)</label>
-              <input
-                type="number"
-                id="add-height_cm"
-                name="height_cm"
-                step="0.1"
-                value={addFormData.height_cm || ''}
-                onChange={handleAddInputChange}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="add-diameter_cm" className="block text-sm font-medium text-gray-700">Diameter (cm)</label>
-              <input
-                type="number"
-                id="add-diameter_cm"
-                name="diameter_cm"
-                step="0.1"
-                value={addFormData.diameter_cm || ''}
-                onChange={handleAddInputChange}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-            <div>
-              <label htmlFor="add-weight_kg" className="block text-sm font-medium text-gray-700">Weight (kg)</label>
-              <input
-                type="number"
-                id="add-weight_kg"
-                name="weight_kg"
-                step="0.1"
-                value={addFormData.weight_kg || ''}
-                onChange={handleAddInputChange}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="add-suitable_for" className="block text-sm font-medium text-gray-700">Suitable For</label>
-            <input
-              type="text"
-              id="add-suitable_for"
-              name="suitable_for"
-              value={addFormData.suitable_for || ''}
-              onChange={handleAddInputChange}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                name="drainage_hole"
-                checked={addFormData.drainage_hole || false}
-                onChange={handleAddInputChange}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="ml-2 text-sm text-gray-700">Drainage Hole</span>
-            </label>
-
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                name="is_active"
-                checked={addFormData.is_active || false}
-                onChange={handleAddInputChange}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="ml-2 text-sm text-gray-700">Active</span>
-            </label>
-
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                name="is_featured"
-                checked={addFormData.is_featured || false}
-                onChange={handleAddInputChange}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="ml-2 text-sm text-gray-700">Featured</span>
-            </label>
-          </div>
-
-          <div className="flex justify-end space-x-3 pt-4">
-            <button
-              onClick={() => setIsAddModalOpen(false)}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleAddSubmit}
-              disabled={loading || imageUpload.uploading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-            >
-              {loading || imageUpload.uploading ? 'Adding...' : 'Add Product'}
-            </button>
           </div>
         </div>
       </Modal>
@@ -1541,6 +1622,7 @@ export default function ProductsPage() {
             <button
               onClick={() => setIsDeleteModalOpen(false)}
               className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              type="button"
             >
               Cancel
             </button>
@@ -1548,6 +1630,7 @@ export default function ProductsPage() {
               onClick={handleDelete}
               disabled={loading}
               className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+              type="button"
             >
               {loading ? 'Deleting...' : 'Delete'}
             </button>
