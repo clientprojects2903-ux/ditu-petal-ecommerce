@@ -70,18 +70,18 @@ const Modal = React.memo(({ isOpen, onClose, title, children }: any) => {
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div 
+      <div
         className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
         onClick={onClose}
       />
-      
+
       <div className="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
         <div className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-4xl">
           <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium leading-6 text-gray-900">{title}</h3>
-              <button 
-                onClick={onClose} 
+              <button
+                onClick={onClose}
                 className="rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none"
               >
                 <span className="text-2xl">&times;</span>
@@ -98,13 +98,13 @@ const Modal = React.memo(({ isOpen, onClose, title, children }: any) => {
 Modal.displayName = 'Modal';
 
 // Image Upload Component - Moved outside and memoized
-const ImageUploadField = React.memo(({ 
-  label, 
-  type, 
+const ImageUploadField = React.memo(({
+  label,
+  type,
   currentImageUrl,
-  onFileSelect 
-}: { 
-  label: string; 
+  onFileSelect
+}: {
+  label: string;
   type: keyof Pick<ImageUploadState, 'thumbnail' | 'heroImage1' | 'heroImage2' | 'heroImage3'>;
   currentImageUrl?: string | null;
   onFileSelect: (type: any, file: File | null) => void;
@@ -114,7 +114,7 @@ const ImageUploadField = React.memo(({
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     onFileSelect(type, file);
-    
+
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -144,7 +144,7 @@ const ImageUploadField = React.memo(({
             </div>
           )}
         </div>
-        
+
         {/* Upload button */}
         <div className="flex-1">
           <input
@@ -224,19 +224,19 @@ export default function ProductsPage() {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await fetch('/api/products');
       if (!response.ok) {
         throw new Error('Failed to fetch products');
       }
-      
+
       const result: ApiResponse<Product[]> = await response.json();
-      
+
       const productsWithCategory = result.data.map(product => ({
         ...product,
         category_name: product.categories?.name || 'N/A'
       }));
-      
+
       setProducts(productsWithCategory);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch products');
@@ -252,7 +252,7 @@ export default function ProductsPage() {
       if (!response.ok) {
         throw new Error('Failed to fetch categories');
       }
-      
+
       const result: ApiResponse<Category[]> = await response.json();
       setCategories(result.data);
     } catch (err) {
@@ -261,7 +261,11 @@ export default function ProductsPage() {
   };
 
   // Image upload function - Updated bucket name to 'product-images'
-  const uploadImage = async (file: File, bucket: string = 'product-images', path: string = ''): Promise<string | null> => {
+  const uploadImage = async (
+    file: File,
+    bucket = 'product-images',
+    path = ''
+  ): Promise<string | null> => {
     try {
       // Generate a unique filename
       const fileExt = file.name.split('.').pop();
@@ -295,7 +299,7 @@ export default function ProductsPage() {
 
   // Handle file selection
   const handleFileSelect = useCallback((
-    type: keyof Pick<ImageUploadState, 'thumbnail' | 'heroImage1' | 'heroImage2' | 'heroImage3'>, 
+    type: keyof Pick<ImageUploadState, 'thumbnail' | 'heroImage1' | 'heroImage2' | 'heroImage3'>,
     file: File | null
   ) => {
     setImageUpload(prev => ({
@@ -307,7 +311,7 @@ export default function ProductsPage() {
   // Upload all images for add product - Updated bucket path
   const uploadAllImages = async (): Promise<Partial<Product>> => {
     const imageUrls: Partial<Product> = {};
-    
+
     // Upload thumbnail
     if (imageUpload.thumbnail) {
       const url = await uploadImage(imageUpload.thumbnail, 'product-images', 'thumbnails');
@@ -334,7 +338,7 @@ export default function ProductsPage() {
   };
 
   // Filter products based on search - Memoized
-  const filteredProducts = useMemo(() => 
+  const filteredProducts = useMemo(() =>
     products.filter(product =>
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       product.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -346,13 +350,13 @@ export default function ProductsPage() {
   // Pagination - Memoized values
   const indexOfLastItem = useMemo(() => currentPage * itemsPerPage, [currentPage, itemsPerPage]);
   const indexOfFirstItem = useMemo(() => indexOfLastItem - itemsPerPage, [indexOfLastItem, itemsPerPage]);
-  
-  const currentItems = useMemo(() => 
+
+  const currentItems = useMemo(() =>
     filteredProducts.slice(indexOfFirstItem, indexOfLastItem),
     [filteredProducts, indexOfFirstItem, indexOfLastItem]
   );
-  
-  const totalPages = useMemo(() => 
+
+  const totalPages = useMemo(() =>
     Math.ceil(filteredProducts.length / itemsPerPage),
     [filteredProducts.length, itemsPerPage]
   );
@@ -398,7 +402,7 @@ export default function ProductsPage() {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value, type } = e.target;
-    
+
     setEditFormData(prev => {
       // Handle different input types
       if (type === 'checkbox') {
@@ -424,29 +428,29 @@ export default function ProductsPage() {
 
   const handleEditSubmit = async () => {
     if (!selectedProduct) return;
-    
+
     try {
       setLoading(true);
       setApiError(null);
-      
+
       // Upload new images if selected
       const uploadedImageUrls = await uploadAllImages();
-      
+
       // Merge uploaded image URLs with existing form data
       const updatedFormData = {
         ...editFormData,
         ...uploadedImageUrls
       };
-      
+
       const { category_name, categories, ...updateData } = updatedFormData;
-      
+
       const dataToSend = {
         ...updateData,
         updated_at: new Date().toISOString()
       };
-      
+
       console.log('Updating product with data:', dataToSend);
-      
+
       const response = await fetch(`/api/products/${selectedProduct.id}`, {
         method: 'PUT',
         headers: {
@@ -456,14 +460,14 @@ export default function ProductsPage() {
       });
 
       const responseData = await response.json();
-      
+
       if (!response.ok) {
         const errorMessage = responseData.error || responseData.message || 'Failed to update product';
         throw new Error(errorMessage);
       }
 
       console.log('Update successful:', responseData);
-      
+
       // Reset image upload state
       setImageUpload({
         thumbnail: null,
@@ -478,7 +482,7 @@ export default function ProductsPage() {
           heroImage3: 0,
         }
       });
-      
+
       await fetchProducts();
       setIsEditModalOpen(false);
       setSelectedProduct(null);
@@ -495,11 +499,11 @@ export default function ProductsPage() {
   // Handle Delete
   const handleDelete = async () => {
     if (!selectedProduct) return;
-    
+
     try {
       setLoading(true);
       setApiError(null);
-      
+
       const response = await fetch(`/api/products/${selectedProduct.id}`, {
         method: 'DELETE',
       });
@@ -528,7 +532,7 @@ export default function ProductsPage() {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value, type } = e.target;
-    
+
     setAddFormData(prev => {
       if (type === 'checkbox') {
         const checkbox = e.target as HTMLInputElement;
@@ -555,7 +559,7 @@ export default function ProductsPage() {
     try {
       setLoading(true);
       setApiError(null);
-      
+
       // Validate required fields
       if (!addFormData.name || !addFormData.slug || !addFormData.price) {
         throw new Error('Name, slug, and price are required fields');
@@ -564,13 +568,13 @@ export default function ProductsPage() {
       // Upload images first
       setImageUpload(prev => ({ ...prev, uploading: true }));
       const uploadedImageUrls = await uploadAllImages();
-      
+
       // Merge form data with uploaded image URLs
       const productData = {
         ...addFormData,
         ...uploadedImageUrls
       };
-      
+
       const { category_name, categories, ...dataToSend } = productData;
 
       const response = await fetch('/api/products', {
@@ -602,7 +606,7 @@ export default function ProductsPage() {
           heroImage3: 0,
         }
       });
-      
+
       await fetchProducts();
       setIsAddModalOpen(false);
       setAddFormData({
@@ -674,14 +678,14 @@ export default function ProductsPage() {
             onClick={exportToExcel}
             className="flex items-center justify-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 w-full sm:w-auto"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
             <span>Export Excel</span>
           </button>
           <button
             onClick={() => setIsAddModalOpen(true)}
             className="flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 w-full sm:w-auto"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
             <span>Add Product</span>
           </button>
         </div>
@@ -697,7 +701,7 @@ export default function ProductsPage() {
       {/* Search Bar */}
       <div className="mb-6">
         <div className="relative">
-          <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
           <input
             type="text"
             placeholder="Search products..."
@@ -749,9 +753,8 @@ export default function ProductsPage() {
                     <div className="text-sm text-gray-900">{product.stock || 0}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      product.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${product.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
                       {product.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </td>
@@ -765,14 +768,14 @@ export default function ProductsPage() {
                         className="text-blue-600 hover:text-blue-900"
                         title="View Details"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="2"/><path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="2" /><path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z" /></svg>
                       </button>
                       <button
                         onClick={() => handleEdit(product)}
                         className="text-yellow-600 hover:text-yellow-900"
                         title="Edit"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 14.66V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1-2-2h5.34"/><polygon points="18 2 22 6 12 16 8 16 8 12 18 2"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 14.66V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1-2-2h5.34" /><polygon points="18 2 22 6 12 16 8 16 8 12 18 2" /></svg>
                       </button>
                       <button
                         onClick={() => {
@@ -782,7 +785,7 @@ export default function ProductsPage() {
                         className="text-red-600 hover:text-red-900"
                         title="Delete"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0h10"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0h10" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>
                       </button>
                     </div>
                   </td>
@@ -825,17 +828,16 @@ export default function ProductsPage() {
                   disabled={currentPage === 1}
                   className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
                 >
-                  <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
+                  <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
                 </button>
                 {[...Array(totalPages)].map((_, i) => (
                   <button
                     key={i + 1}
                     onClick={() => handlePageClick(i + 1)}
-                    className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                      currentPage === i + 1
+                    className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === i + 1
                         ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
                         : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                    }`}
+                      }`}
                   >
                     {i + 1}
                   </button>
@@ -845,7 +847,7 @@ export default function ProductsPage() {
                   disabled={currentPage === totalPages}
                   className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
                 >
-                  <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd"/></svg>
+                  <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" /></svg>
                 </button>
               </nav>
             </div>
@@ -950,17 +952,15 @@ export default function ProductsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <h3 className="text-sm font-medium text-gray-500">Status</h3>
-                <span className={`mt-1 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                  selectedProduct.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                }`}>
+                <span className={`mt-1 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${selectedProduct.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}>
                   {selectedProduct.is_active ? 'Active' : 'Inactive'}
                 </span>
               </div>
               <div>
                 <h3 className="text-sm font-medium text-gray-500">Featured</h3>
-                <span className={`mt-1 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                  selectedProduct.is_featured ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'
-                }`}>
+                <span className={`mt-1 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${selectedProduct.is_featured ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'
+                  }`}>
                   {selectedProduct.is_featured ? 'Yes' : 'No'}
                 </span>
               </div>
@@ -989,28 +989,28 @@ export default function ProductsPage() {
             {/* Image Upload Fields */}
             <div className="border-b pb-4 mb-4">
               <h4 className="text-md font-medium text-gray-900 mb-4">Product Images</h4>
-              
+
               <ImageUploadField
                 label="Thumbnail"
                 type="thumbnail"
                 currentImageUrl={editFormData.thumbnail}
                 onFileSelect={handleFileSelect}
               />
-              
+
               <ImageUploadField
                 label="Hero Image 1"
                 type="heroImage1"
                 currentImageUrl={editFormData.hero_image_1}
                 onFileSelect={handleFileSelect}
               />
-              
+
               <ImageUploadField
                 label="Hero Image 2"
                 type="heroImage2"
                 currentImageUrl={editFormData.hero_image_2}
                 onFileSelect={handleFileSelect}
               />
-              
+
               <ImageUploadField
                 label="Hero Image 3"
                 type="heroImage3"
@@ -1279,25 +1279,25 @@ export default function ProductsPage() {
           {/* Image Upload Fields for Add */}
           <div className="border-b pb-4 mb-4">
             <h4 className="text-md font-medium text-gray-900 mb-4">Product Images</h4>
-            
+
             <ImageUploadField
               label="Thumbnail *"
               type="thumbnail"
               onFileSelect={handleFileSelect}
             />
-            
+
             <ImageUploadField
               label="Hero Image 1"
               type="heroImage1"
               onFileSelect={handleFileSelect}
             />
-            
+
             <ImageUploadField
               label="Hero Image 2"
               type="heroImage2"
               onFileSelect={handleFileSelect}
             />
-            
+
             <ImageUploadField
               label="Hero Image 3"
               type="heroImage3"
@@ -1563,7 +1563,7 @@ export default function ProductsPage() {
               <strong>Error:</strong> {apiError}
             </div>
           )}
-          
+
           <p className="text-gray-700">
             Are you sure you want to delete "{selectedProduct?.name}"? This action cannot be undone.
           </p>
