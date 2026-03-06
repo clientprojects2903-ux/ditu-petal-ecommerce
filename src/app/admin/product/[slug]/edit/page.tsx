@@ -2,7 +2,7 @@
 
 import { supabase } from '@/lib/supabase';
 import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 interface Category {
@@ -10,32 +10,6 @@ interface Category {
   name: string;
   slug: string;
   description: string | null;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  slug: string;
-  description: string | null;
-  short_description: string | null;
-  category_id: string | null;
-  price: number;
-  compare_price: number | null;
-  stock: number | null;
-  material: string | null;
-  color: string | null;
-  size: string | null;
-  height_cm: number | null;
-  diameter_cm: number | null;
-  drainage_hole: boolean | null;
-  suitable_for: string | null;
-  weight_kg: number | null;
-  thumbnail: string;
-  hero_image_1: string | null;
-  hero_image_2: string | null;
-  hero_image_3: string | null;
-  is_active: boolean | null;
-  is_featured: boolean | null;
 }
 
 interface ImageUploadState {
@@ -49,21 +23,23 @@ interface ImageUploadState {
 const ImageUploadField = React.memo(({
   label,
   type,
-  currentImageUrl,
+  required = false,
   onFileSelect
 }: {
   label: string;
   type: 'thumbnail' | 'heroImage1' | 'heroImage2' | 'heroImage3';
-  currentImageUrl?: string | null;
+  required?: boolean;
   onFileSelect: (type: any, file: File | null) => void;
 }) => {
   const [preview, setPreview] = useState<string | null>(null);
+  const [fileName, setFileName] = useState<string>('');
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     onFileSelect(type, file);
 
     if (file) {
+      setFileName(file.name);
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreview(reader.result as string);
@@ -71,19 +47,20 @@ const ImageUploadField = React.memo(({
       reader.readAsDataURL(file);
     } else {
       setPreview(null);
+      setFileName('');
     }
   }, [type, onFileSelect]);
 
   return (
-    <div className="mb-4">
-      <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
+    <div className="mb-6">
+      <label className="block text-sm font-medium text-gray-700 mb-2">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
       <div className="flex items-start space-x-4">
         {/* Preview */}
-        <div className="w-24 h-24 border rounded-lg overflow-hidden bg-gray-100">
+        <div className="w-24 h-24 border rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
           {preview ? (
             <img src={preview} alt="Preview" className="w-full h-full object-cover" />
-          ) : currentImageUrl ? (
-            <img src={currentImageUrl} alt="Current" className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-gray-400">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -93,24 +70,31 @@ const ImageUploadField = React.memo(({
           )}
         </div>
 
-        {/* Upload button */}
+        {/* Upload button and file name */}
         <div className="flex-1">
-          <input
-            type="file"
-            id={`file-${type}`}
-            accept="image/*"
-            onChange={handleFileChange}
-            className="hidden"
-          />
-          <label
-            htmlFor={`file-${type}`}
-            className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer"
-          >
-            Choose File
-          </label>
-          {currentImageUrl && !preview && (
-            <p className="mt-1 text-xs text-gray-500">Current image shown. Select a new file to replace it.</p>
-          )}
+          <div className="flex items-center">
+            <input
+              type="file"
+              id={`file-${type}`}
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+            <label
+              htmlFor={`file-${type}`}
+              className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer"
+            >
+              Choose File
+            </label>
+            {fileName && (
+              <span className="ml-3 text-sm text-gray-600 truncate max-w-xs">
+                {fileName}
+              </span>
+            )}
+          </div>
+          <p className="mt-1 text-xs text-gray-500">
+            Recommended: JPG, PNG, WebP. Max size: 5MB
+          </p>
         </div>
       </div>
     </div>
@@ -119,18 +103,33 @@ const ImageUploadField = React.memo(({
 
 ImageUploadField.displayName = 'ImageUploadField';
 
-export default function EditProductPage() {
+export default function AddProductPage() {
   const router = useRouter();
-  const params = useParams();
-  const slug = params.slug as string;
-
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [productId, setProductId] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   
-  const [formData, setFormData] = useState<Partial<Product>>({});
+  const [formData, setFormData] = useState({
+    name: '',
+    slug: '',
+    description: '',
+    short_description: '',
+    category_id: '',
+    price: '',
+    compare_price: '',
+    stock: '',
+    material: '',
+    color: '',
+    size: '',
+    height_cm: '',
+    diameter_cm: '',
+    weight_kg: '',
+    suitable_for: '',
+    drainage_hole: true,
+    is_active: true,
+    is_featured: false,
+  });
 
   const [imageUpload, setImageUpload] = useState<ImageUploadState>({
     thumbnail: null,
@@ -140,32 +139,11 @@ export default function EditProductPage() {
     uploading: false,
   });
 
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
   useEffect(() => {
-    if (slug) {
-      fetchProductBySlug();
-      fetchCategories();
-    }
-  }, [slug]);
-
-  const fetchProductBySlug = async () => {
-    try {
-      setInitialLoading(true);
-      const response = await fetch(`/api/products/slug/${slug}`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch product');
-      }
-
-      const result = await response.json();
-      setProductId(result.data.id);
-      setFormData(result.data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch product');
-      console.error('Error fetching product:', err);
-    } finally {
-      setInitialLoading(false);
-    }
-  };
+    fetchCategories();
+  }, []);
 
   const fetchCategories = async () => {
     try {
@@ -183,6 +161,7 @@ export default function EditProductPage() {
   const generateSlug = (name: string) => {
     return name
       .toLowerCase()
+      .trim()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)+/g, '');
   };
@@ -192,17 +171,24 @@ export default function EditProductPage() {
   ) => {
     const { name, value, type } = e.target;
 
+    // Clear error for this field
+    if (errors[name]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
+
     setFormData(prev => {
       if (type === 'checkbox') {
         const checkbox = e.target as HTMLInputElement;
         return { ...prev, [name]: checkbox.checked };
-      } else if (type === 'number') {
-        return { ...prev, [name]: value === '' ? null : parseFloat(value) };
       } else {
         return { ...prev, [name]: value };
       }
     });
-  }, []);
+  }, [errors]);
 
   const handleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const name = e.target.value;
@@ -211,7 +197,16 @@ export default function EditProductPage() {
       name,
       slug: generateSlug(name)
     }));
-  }, []);
+    
+    // Clear name error if exists
+    if (errors.name) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.name;
+        return newErrors;
+      });
+    }
+  }, [errors]);
 
   const handleFileSelect = useCallback((
     type: keyof Pick<ImageUploadState, 'thumbnail' | 'heroImage1' | 'heroImage2' | 'heroImage3'>,
@@ -221,7 +216,49 @@ export default function EditProductPage() {
       ...prev,
       [type]: file
     }));
-  }, []);
+
+    // Clear thumbnail error if exists
+    if (type === 'thumbnail' && errors.thumbnail) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.thumbnail;
+        return newErrors;
+      });
+    }
+  }, [errors]);
+
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.name.trim()) {
+      newErrors.name = 'Product name is required';
+    }
+
+    if (!formData.slug.trim()) {
+      newErrors.slug = 'Slug is required';
+    }
+
+    if (!formData.price) {
+      newErrors.price = 'Price is required';
+    } else if (isNaN(parseFloat(formData.price)) || parseFloat(formData.price) <= 0) {
+      newErrors.price = 'Price must be a positive number';
+    }
+
+    if (formData.compare_price && (isNaN(parseFloat(formData.compare_price)) || parseFloat(formData.compare_price) < 0)) {
+      newErrors.compare_price = 'Compare price must be a positive number';
+    }
+
+    if (formData.stock && (isNaN(parseInt(formData.stock)) || parseInt(formData.stock) < 0)) {
+      newErrors.stock = 'Stock must be a positive number';
+    }
+
+    if (!imageUpload.thumbnail) {
+      newErrors.thumbnail = 'Thumbnail image is required';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const uploadImage = async (
     file: File,
@@ -229,6 +266,17 @@ export default function EditProductPage() {
     path = ''
   ): Promise<string | null> => {
     try {
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error('File size must be less than 5MB');
+      }
+
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+      if (!allowedTypes.includes(file.type)) {
+        throw new Error('Invalid file type. Only JPG, PNG, WebP, and GIF are allowed');
+      }
+
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
       const filePath = path ? `${path}/${fileName}` : fileName;
@@ -251,8 +299,7 @@ export default function EditProductPage() {
       return publicUrl;
     } catch (error) {
       console.error('Error uploading image:', error);
-      setError(`Failed to upload image: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      return null;
+      throw error;
     }
   };
 
@@ -285,60 +332,87 @@ export default function EditProductPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!productId) return;
+    // Validate form
+    if (!validateForm()) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
 
     try {
       setLoading(true);
       setError(null);
+      setSuccess(null);
 
-      // Upload new images if selected
+      // Upload images first
       setImageUpload(prev => ({ ...prev, uploading: true }));
-      const uploadedImageUrls = await uploadAllImages();
+      
+      let uploadedImageUrls: Record<string, string> = {};
+      try {
+        uploadedImageUrls = await uploadAllImages();
+      } catch (uploadError) {
+        setError(uploadError instanceof Error ? uploadError.message : 'Failed to upload images');
+        setImageUpload(prev => ({ ...prev, uploading: false }));
+        return;
+      }
 
       // Prepare product data
       const productData = {
-        ...formData,
-        ...uploadedImageUrls,
-        updated_at: new Date().toISOString()
+        name: formData.name.trim(),
+        slug: formData.slug.trim(),
+        description: formData.description || null,
+        short_description: formData.short_description || null,
+        category_id: formData.category_id || null,
+        price: parseFloat(formData.price),
+        compare_price: formData.compare_price ? parseFloat(formData.compare_price) : null,
+        stock: formData.stock ? parseInt(formData.stock) : null,
+        material: formData.material || null,
+        color: formData.color || null,
+        size: formData.size || null,
+        height_cm: formData.height_cm ? parseFloat(formData.height_cm) : null,
+        diameter_cm: formData.diameter_cm ? parseFloat(formData.diameter_cm) : null,
+        weight_kg: formData.weight_kg ? parseFloat(formData.weight_kg) : null,
+        suitable_for: formData.suitable_for || null,
+        drainage_hole: formData.drainage_hole,
+        is_active: formData.is_active,
+        is_featured: formData.is_featured,
+        thumbnail: uploadedImageUrls.thumbnail || '',
+        hero_image_1: uploadedImageUrls.hero_image_1 || null,
+        hero_image_2: uploadedImageUrls.hero_image_2 || null,
+        hero_image_3: uploadedImageUrls.hero_image_3 || null,
       };
 
-      // Remove fields that shouldn't be sent
-      const { categories, category_name, ...dataToSend } = productData;
-
-      const response = await fetch(`/api/products/${productId}`, {
-        method: 'PUT',
+      const response = await fetch('/api/products', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(dataToSend),
+        body: JSON.stringify(productData),
       });
 
       const responseData = await response.json();
 
       if (!response.ok) {
-        const errorMessage = responseData.error || responseData.message || 'Failed to update product';
+        const errorMessage = responseData.error || responseData.message || 'Failed to create product';
         throw new Error(errorMessage);
       }
 
-      // Redirect to products list on success
-      router.push('/admin/product');
-      router.refresh();
+      setSuccess('Product created successfully! Redirecting...');
+      
+      // Redirect to products list after a short delay
+      setTimeout(() => {
+        router.push('/admin/products');
+        router.refresh();
+      }, 1500);
       
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update product');
-      console.error('Error updating product:', err);
+      setError(err instanceof Error ? err.message : 'Failed to create product');
+      console.error('Error creating product:', err);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setLoading(false);
+      setImageUpload(prev => ({ ...prev, uploading: false }));
     }
   };
-
-  if (initialLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
-      </div>
-    );
-  }
 
   return (
     <div className="container mx-auto px-4 py-8" style={{ maxWidth: '1200px' }}>
@@ -346,21 +420,28 @@ export default function EditProductPage() {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-4">
           <Link
-            href="/admin/product"
-            className="text-gray-600 hover:text-gray-900"
+            href="/admin/products"
+            className="text-gray-600 hover:text-gray-900 transition-colors"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M19 12H5M12 19l-7-7 7-7"/>
             </svg>
           </Link>
-          <h1 className="text-2xl font-bold">Edit Product</h1>
+          <h1 className="text-2xl font-bold">Add New Product</h1>
         </div>
       </div>
+
+      {/* Success Message */}
+      {success && (
+        <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
+          {success}
+        </div>
+      )}
 
       {/* Error Message */}
       {error && (
         <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-          {error}
+          <strong>Error:</strong> {error}
         </div>
       )}
 
@@ -370,31 +451,32 @@ export default function EditProductPage() {
         <div className="border-b pb-6 mb-6">
           <h2 className="text-lg font-medium text-gray-900 mb-4">Product Images</h2>
           
+          {errors.thumbnail && (
+            <p className="mb-2 text-sm text-red-600">{errors.thumbnail}</p>
+          )}
+          
           <ImageUploadField
             label="Thumbnail"
             type="thumbnail"
-            currentImageUrl={formData.thumbnail}
+            required
             onFileSelect={handleFileSelect}
           />
 
           <ImageUploadField
             label="Hero Image 1"
             type="heroImage1"
-            currentImageUrl={formData.hero_image_1}
             onFileSelect={handleFileSelect}
           />
 
           <ImageUploadField
             label="Hero Image 2"
             type="heroImage2"
-            currentImageUrl={formData.hero_image_2}
             onFileSelect={handleFileSelect}
           />
 
           <ImageUploadField
             label="Hero Image 3"
             type="heroImage3"
-            currentImageUrl={formData.hero_image_3}
             onFileSelect={handleFileSelect}
           />
         </div>
@@ -409,11 +491,17 @@ export default function EditProductPage() {
               type="text"
               id="name"
               name="name"
-              value={formData.name || ''}
+              value={formData.name}
               onChange={handleNameChange}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                errors.name ? 'border-red-500' : 'border-gray-300'
+              }`}
+              placeholder="e.g., Ceramic Planter Pot"
               required
             />
+            {errors.name && (
+              <p className="mt-1 text-sm text-red-600">{errors.name}</p>
+            )}
           </div>
 
           <div>
@@ -424,11 +512,20 @@ export default function EditProductPage() {
               type="text"
               id="slug"
               name="slug"
-              value={formData.slug || ''}
+              value={formData.slug}
               onChange={handleInputChange}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                errors.slug ? 'border-red-500' : 'border-gray-300'
+              }`}
+              placeholder="e.g., ceramic-planter-pot"
               required
             />
+            {errors.slug && (
+              <p className="mt-1 text-sm text-red-600">{errors.slug}</p>
+            )}
+            <p className="mt-1 text-xs text-gray-500">
+              Auto-generated from name, but you can customize it
+            </p>
           </div>
 
           <div>
@@ -438,7 +535,7 @@ export default function EditProductPage() {
             <select
               id="category_id"
               name="category_id"
-              value={formData.category_id || ''}
+              value={formData.category_id}
               onChange={handleInputChange}
               className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
@@ -459,11 +556,18 @@ export default function EditProductPage() {
                 id="price"
                 name="price"
                 step="0.01"
-                value={formData.price || ''}
+                min="0"
+                value={formData.price}
                 onChange={handleInputChange}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={`w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  errors.price ? 'border-red-500' : 'border-gray-300'
+                }`}
+                placeholder="0.00"
                 required
               />
+              {errors.price && (
+                <p className="mt-1 text-sm text-red-600">{errors.price}</p>
+              )}
             </div>
 
             <div>
@@ -475,10 +579,17 @@ export default function EditProductPage() {
                 id="compare_price"
                 name="compare_price"
                 step="0.01"
-                value={formData.compare_price || ''}
+                min="0"
+                value={formData.compare_price}
                 onChange={handleInputChange}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={`w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  errors.compare_price ? 'border-red-500' : 'border-gray-300'
+                }`}
+                placeholder="0.00"
               />
+              {errors.compare_price && (
+                <p className="mt-1 text-sm text-red-600">{errors.compare_price}</p>
+              )}
             </div>
           </div>
 
@@ -490,10 +601,17 @@ export default function EditProductPage() {
               type="number"
               id="stock"
               name="stock"
-              value={formData.stock || ''}
+              min="0"
+              value={formData.stock}
               onChange={handleInputChange}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                errors.stock ? 'border-red-500' : 'border-gray-300'
+              }`}
+              placeholder="0"
             />
+            {errors.stock && (
+              <p className="mt-1 text-sm text-red-600">{errors.stock}</p>
+            )}
           </div>
         </div>
 
@@ -507,23 +625,25 @@ export default function EditProductPage() {
               id="short_description"
               name="short_description"
               rows={2}
-              value={formData.short_description || ''}
+              value={formData.short_description}
               onChange={handleInputChange}
               className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Brief description for product listings"
             />
           </div>
 
           <div>
             <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-              Description
+              Full Description
             </label>
             <textarea
               id="description"
               name="description"
               rows={4}
-              value={formData.description || ''}
+              value={formData.description}
               onChange={handleInputChange}
               className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Detailed product description"
             />
           </div>
         </div>
@@ -541,9 +661,10 @@ export default function EditProductPage() {
                 type="text"
                 id="material"
                 name="material"
-                value={formData.material || ''}
+                value={formData.material}
                 onChange={handleInputChange}
                 className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g., Ceramic, Terracotta"
               />
             </div>
 
@@ -555,9 +676,10 @@ export default function EditProductPage() {
                 type="text"
                 id="color"
                 name="color"
-                value={formData.color || ''}
+                value={formData.color}
                 onChange={handleInputChange}
                 className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g., Red, Blue, Green"
               />
             </div>
 
@@ -569,9 +691,10 @@ export default function EditProductPage() {
                 type="text"
                 id="size"
                 name="size"
-                value={formData.size || ''}
+                value={formData.size}
                 onChange={handleInputChange}
                 className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g., Small, Medium, Large"
               />
             </div>
 
@@ -584,9 +707,11 @@ export default function EditProductPage() {
                 id="height_cm"
                 name="height_cm"
                 step="0.1"
-                value={formData.height_cm || ''}
+                min="0"
+                value={formData.height_cm}
                 onChange={handleInputChange}
                 className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="0.0"
               />
             </div>
 
@@ -599,9 +724,11 @@ export default function EditProductPage() {
                 id="diameter_cm"
                 name="diameter_cm"
                 step="0.1"
-                value={formData.diameter_cm || ''}
+                min="0"
+                value={formData.diameter_cm}
                 onChange={handleInputChange}
                 className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="0.0"
               />
             </div>
 
@@ -614,13 +741,15 @@ export default function EditProductPage() {
                 id="weight_kg"
                 name="weight_kg"
                 step="0.1"
-                value={formData.weight_kg || ''}
+                min="0"
+                value={formData.weight_kg}
                 onChange={handleInputChange}
                 className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="0.0"
               />
             </div>
 
-            <div>
+            <div className="md:col-span-3">
               <label htmlFor="suitable_for" className="block text-sm font-medium text-gray-700 mb-1">
                 Suitable For
               </label>
@@ -628,9 +757,10 @@ export default function EditProductPage() {
                 type="text"
                 id="suitable_for"
                 name="suitable_for"
-                value={formData.suitable_for || ''}
+                value={formData.suitable_for}
                 onChange={handleInputChange}
                 className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g., Indoor plants, Outdoor plants, Succulents"
               />
             </div>
           </div>
@@ -641,37 +771,37 @@ export default function EditProductPage() {
           <h2 className="text-lg font-medium text-gray-900 mb-4">Status & Settings</h2>
           
           <div className="flex flex-wrap gap-6">
-            <label className="flex items-center">
+            <label className="flex items-center space-x-2">
               <input
                 type="checkbox"
                 name="drainage_hole"
-                checked={formData.drainage_hole || false}
+                checked={formData.drainage_hole}
                 onChange={handleInputChange}
                 className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
-              <span className="ml-2 text-sm text-gray-700">Drainage Hole</span>
+              <span className="text-sm text-gray-700">Drainage Hole</span>
             </label>
 
-            <label className="flex items-center">
+            <label className="flex items-center space-x-2">
               <input
                 type="checkbox"
                 name="is_active"
-                checked={formData.is_active || false}
+                checked={formData.is_active}
                 onChange={handleInputChange}
                 className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
-              <span className="ml-2 text-sm text-gray-700">Active</span>
+              <span className="text-sm text-gray-700">Active (Visible in store)</span>
             </label>
 
-            <label className="flex items-center">
+            <label className="flex items-center space-x-2">
               <input
                 type="checkbox"
                 name="is_featured"
-                checked={formData.is_featured || false}
+                checked={formData.is_featured}
                 onChange={handleInputChange}
                 className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
-              <span className="ml-2 text-sm text-gray-700">Featured</span>
+              <span className="text-sm text-gray-700">Featured Product</span>
             </label>
           </div>
         </div>
@@ -680,16 +810,22 @@ export default function EditProductPage() {
         <div className="border-t pt-6 flex justify-end space-x-3">
           <Link
             href="/admin/products"
-            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
             Cancel
           </Link>
           <button
             type="submit"
             disabled={loading || imageUpload.uploading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
           >
-            {loading || imageUpload.uploading ? 'Saving Changes...' : 'Save Changes'}
+            {(loading || imageUpload.uploading) && (
+              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            )}
+            {loading || imageUpload.uploading ? 'Creating Product...' : 'Create Product'}
           </button>
         </div>
       </form>
