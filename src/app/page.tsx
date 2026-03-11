@@ -414,7 +414,7 @@ function CustomBouquetSection() {
         <div className="relative">
           <div className="rounded-2xl overflow-hidden shadow-xl">
             <img
-              src="/images/pink-roses-bouquet.jpg"
+              src="https://wuwjfagcfhowbwqwujka.supabase.co/storage/v1/object/public/website-assets/website-images/hnznvqczmm5.webp"
               alt="Beautiful pink roses custom bouquet"
               className="w-full h-auto object-cover"
             />
@@ -647,7 +647,7 @@ function AboutSection() {
             {/* Top Left - Large Image */}
             <div className="row-span-2">
               <img
-                src="/bouquet-1.jpg"
+                src="https://wuwjfagcfhowbwqwujka.supabase.co/storage/v1/object/public/website-assets/website-images/IMG20251213170623.png"
                 alt="Pink roses and gerbera bouquet"
                 className="w-full h-full object-cover rounded-2xl"
               />
@@ -656,7 +656,7 @@ function AboutSection() {
             {/* Top Right Image */}
             <div>
               <img
-                src="/bouquet-2.jpg"
+                src="https://wuwjfagcfhowbwqwujka.supabase.co/storage/v1/object/public/website-assets/website-images/IMG20251217142845%20(1).png"
                 alt="Colorful mixed flower bouquet"
                 className="w-full h-48 object-cover rounded-2xl"
               />
@@ -665,7 +665,7 @@ function AboutSection() {
             {/* Bottom Right Image */}
             <div className="relative">
               <img
-                src="/bouquet-4.jpg"
+                src="https://wuwjfagcfhowbwqwujka.supabase.co/storage/v1/object/public/website-assets/website-images/IMG_53431.webp"
                 alt="Red roses bouquet"
                 className="w-full h-64 object-cover rounded-2xl"
               />
@@ -674,7 +674,7 @@ function AboutSection() {
             {/* Bottom Left Image */}
             <div className="col-span-1 -mt-20">
               <img
-                src="/bouquet-3.jpg"
+                src="https://wuwjfagcfhowbwqwujka.supabase.co/storage/v1/object/public/website-assets/website-images/IMG_52101.webp"
                 alt="White roses bouquet"
                 className="w-full h-72 object-cover rounded-2xl"
               />
