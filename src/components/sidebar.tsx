@@ -116,6 +116,13 @@ export function Sidebar() {
       href: '/admin/panel',
       roles: ['admin']
     },
+    {
+  id: 'ContactQueries',
+  label: 'Contact Queries',
+  icon: <MessageSquare size={20} />,
+  href: '/admin/contactus',
+  roles: ['admin']
+},
   ]
 
   const navItems = getNavItems()
