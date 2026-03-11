@@ -1,136 +1,25 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
-import { useDropzone } from 'react-dropzone'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 interface Website {
   id: string
   name: string
-  hero_banner1: string | null
-  hero_banner2: string | null
-  hero_banner3: string | null
-  hero_banner4: string | null
-  hero_banner5: string | null
+  background_color: string | null
+  image: string | null
+  description: string | null
   created_at: string | null
   updated_at: string | null
 }
 
-interface WebsiteFormData {
-  name: string
-  hero_banner1: File | string | null
-  hero_banner2: File | string | null
-  hero_banner3: File | string | null
-  hero_banner4: File | string | null
-  hero_banner5: File | string | null
-}
-
-type BannerField =
-  | 'hero_banner1'
-  | 'hero_banner2'
-  | 'hero_banner3'
-  | 'hero_banner4'
-  | 'hero_banner5'
-
-interface ImageUploadProps {
-  currentImage: string | null
-  onImageChange: (file: File | null) => void
-  label: string
-}
-
-function ImageUpload({ currentImage, onImageChange, label }: ImageUploadProps) {
-  const [preview, setPreview] = useState<string | null>(currentImage)
-
-  useEffect(() => {
-    setPreview(currentImage)
-  }, [currentImage])
-
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    if (acceptedFiles.length > 0) {
-      const selectedFile = acceptedFiles[0]
-      onImageChange(selectedFile)
-      const objectUrl = URL.createObjectURL(selectedFile)
-      setPreview(objectUrl)
-    }
-  }, [onImageChange])
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp']
-    },
-    maxFiles: 1,
-    maxSize: 5 * 1024 * 1024,
-  })
-
-  const handleRemove = () => {
-    setPreview(null)
-    onImageChange(null)
-  }
-
-  return (
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700">{label}</label>
-
-      {preview ? (
-        <div className="relative">
-          <div className="relative h-40 w-full rounded-lg overflow-hidden border border-gray-200">
-            <img src={preview} alt={label} className="w-full h-full object-cover"/>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleRemove}
-            className="absolute top-2 right-2 p-1.5 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors shadow-lg"
-          >
-            ✕
-          </button>
-        </div>
-      ) : (
-        <div
-          {...getRootProps()}
-          className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
-            isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
-          }`}
-        >
-          <input {...getInputProps()} />
-
-          <p className="mt-2 text-sm text-gray-600">
-            {isDragActive ? 'Drop image here' : 'Click or drag to upload'}
-          </p>
-
-          <p className="text-xs text-gray-500 mt-1">
-            PNG, JPG, GIF up to 5MB
-          </p>
-        </div>
-      )}
-    </div>
-  )
-}
-
-const mapWebsiteToFormData = (website: Website): WebsiteFormData => ({
-  name: website.name,
-  hero_banner1: website.hero_banner1,
-  hero_banner2: website.hero_banner2,
-  hero_banner3: website.hero_banner3,
-  hero_banner4: website.hero_banner4,
-  hero_banner5: website.hero_banner5,
-})
-
-export default function WebsitesPage() {
-
-  const [website, setWebsite] = useState<Website | null>(null)
+export default function WebsitesListPage() {
+  const [websites, setWebsites] = useState<Website[]>([])
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-
-  const [formData, setFormData] = useState<WebsiteFormData>({
-    name: '',
-    hero_banner1: null,
-    hero_banner2: null,
-    hero_banner3: null,
-    hero_banner4: null,
-    hero_banner5: null,
-  })
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null)
+  const router = useRouter()
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -138,286 +27,165 @@ export default function WebsitesPage() {
   )
 
   useEffect(() => {
-    fetchMainWebsite()
+    fetchWebsites()
   }, [])
 
-  const fetchMainWebsite = async () => {
+  const fetchWebsites = async () => {
     try {
-
       const { data, error } = await supabase
         .from('websites')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
-
-      if (error) {
-
-        if (error.code === 'PGRST116') {
-          setWebsite(null)
-        } else {
-          throw error
-        }
-
-      } else {
-
-        setWebsite(data)
-        setFormData(mapWebsiteToFormData(data))
-
-      }
-
-    } catch (error) {
-
-      console.error(error)
-
-    } finally {
-
-      setLoading(false)
-
-    }
-  }
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-
-    const { name, value } = e.target
-
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
-
-  }
-
-  const handleImageChange = (field: BannerField, file: File | null) => {
-
-    setFormData(prev => ({
-      ...prev,
-      [field]: file
-    }))
-
-  }
-
-  const uploadImage = async (file: File, path: string): Promise<string | null> => {
-
-    try {
-
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`
-      const filePath = `${path}/${fileName}`
-
-      const { error } = await supabase.storage
-        .from('website-assets')
-        .upload(filePath, file)
 
       if (error) throw error
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('website-assets')
-        .getPublicUrl(filePath)
-
-      return publicUrl
-
+      setWebsites(data || [])
     } catch (error) {
-
-      console.error(error)
-      return null
-
+      console.error('Error fetching websites:', error)
+      alert('Error fetching websites')
+    } finally {
+      setLoading(false)
     }
-
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleDelete = async (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
+      return
+    }
 
-    e.preventDefault()
-    if (!website) return
-
-    setSaving(true)
-
+    setDeleteLoading(id)
     try {
-
-      const updates: Partial<Website> = {
-        name: formData.name,
-        updated_at: new Date().toISOString()
-      }
-
-      for (let i = 1; i <= 5; i++) {
-
-        const field = `hero_banner${i}` as BannerField
-        const value = formData[field]
-
-        if (value instanceof File) {
-
-          const url = await uploadImage(value, 'hero_banners')
-
-          if (url) updates[field] = url
-
-        }
-
-        else if (typeof value === 'string') {
-
-          updates[field] = value
-
-        }
-
-        else {
-
-          updates[field] = null
-
-        }
-
-      }
-
       const { error } = await supabase
         .from('websites')
-        .update(updates)
-        .eq('id', website.id)
+        .delete()
+        .eq('id', id)
 
       if (error) throw error
-
-      await fetchMainWebsite()
-
-      alert('Website updated successfully!')
-
+      
+      await fetchWebsites()
+      alert('Website deleted successfully!')
     } catch (error) {
-
-      console.error(error)
-      alert('Error updating website')
-
+      console.error('Error deleting website:', error)
+      alert('Error deleting website')
     } finally {
-
-      setSaving(false)
-
+      setDeleteLoading(null)
     }
-
-  }
-
-  const handleReset = () => {
-
-    if (website) {
-      setFormData(mapWebsiteToFormData(website))
-    }
-
   }
 
   if (loading) {
-
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        Loading...
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading websites...</p>
+        </div>
       </div>
     )
-
-  }
-
-  if (!website) {
-
-    return (
-      <div className="container mx-auto px-4 py-12">
-        No Website Found
-      </div>
-    )
-
   }
 
   return (
-
     <div className="min-h-screen bg-gray-50">
-
       <div className="bg-white border-b border-gray-200">
         <div className="container mx-auto px-4 py-6">
-          <h1 className="text-3xl font-bold text-gray-900">
-            Website Configuration
-          </h1>
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Websites</h1>
+              <p className="text-sm text-gray-600 mt-1">
+                Manage your website configurations
+              </p>
+            </div>
+            <Link
+              href="/admin/websites/add"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span>Add New Website</span>
+            </Link>
+          </div>
         </div>
       </div>
 
       <div className="container mx-auto px-4 py-8">
-
-        <form onSubmit={handleSubmit} className="space-y-8">
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-
-            <h2 className="text-xl font-semibold mb-4">
-              Basic Information
-            </h2>
-
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleInputChange}
-              className="w-full border px-4 py-2 rounded"
-              required
-            />
-
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-
-            <h2 className="text-xl font-semibold mb-6">
-              Hero Banners
-            </h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-              <ImageUpload
-                currentImage={typeof formData.hero_banner1 === 'string' ? formData.hero_banner1 : null}
-                onImageChange={(file) => handleImageChange('hero_banner1', file)}
-                label="Hero Banner 1"
-              />
-
-              <ImageUpload
-                currentImage={typeof formData.hero_banner2 === 'string' ? formData.hero_banner2 : null}
-                onImageChange={(file) => handleImageChange('hero_banner2', file)}
-                label="Hero Banner 2"
-              />
-
-              <ImageUpload
-                currentImage={typeof formData.hero_banner3 === 'string' ? formData.hero_banner3 : null}
-                onImageChange={(file) => handleImageChange('hero_banner3', file)}
-                label="Hero Banner 3"
-              />
-
-              <ImageUpload
-                currentImage={typeof formData.hero_banner4 === 'string' ? formData.hero_banner4 : null}
-                onImageChange={(file) => handleImageChange('hero_banner4', file)}
-                label="Hero Banner 4"
-              />
-
-              <ImageUpload
-                currentImage={typeof formData.hero_banner5 === 'string' ? formData.hero_banner5 : null}
-                onImageChange={(file) => handleImageChange('hero_banner5', file)}
-                label="Hero Banner 5"
-              />
-
-            </div>
-
-          </div>
-
-          <div className="flex justify-end space-x-4 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-
-            <button
-              type="button"
-              onClick={handleReset}
-              className="px-6 py-2 border rounded"
+        {websites.length === 0 ? (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+            <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No websites found</h3>
+            <p className="text-gray-500 mb-6">Get started by creating your first website configuration.</p>
+            <Link
+              href="/admin/websites/add"
+              className="inline-flex px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
-              Reset Changes
-            </button>
-
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-6 py-2 bg-blue-600 text-white rounded"
-            >
-              {saving ? 'Saving...' : 'Save Changes'}
-            </button>
-
+              Add New Website
+            </Link>
           </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {websites.map((website) => (
+              <div
+                key={website.id}
+                className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
+              >
+                {website.image ? (
+                  <div className="h-48 overflow-hidden">
+                    <img
+                      src={website.image}
+                      alt={website.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div 
+                    className="h-48 flex items-center justify-center"
+                    style={{ backgroundColor: website.background_color || '#f3f4f6' }}
+                  >
+                    <span className="text-gray-400">No image</span>
+                  </div>
+                )}
+                
+                <div className="p-6">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">{website.name}</h3>
+                  
+                  {website.description && (
+                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">{website.description}</p>
+                  )}
+                  
+                  <div className="flex items-center text-sm text-gray-500 mb-4">
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span>Created: {new Date(website.created_at || '').toLocaleDateString()}</span>
+                  </div>
 
-        </form>
-
+                  <div className="flex space-x-2">
+                    <Link
+                      href={`/admin/websites/${website.id}`}
+                      className="flex-1 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-center text-sm"
+                    >
+                      View
+                    </Link>
+                    <Link
+                      href={`/admin/websites/${website.id}/edit`}
+                      className="flex-1 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-center text-sm"
+                    >
+                      Edit
+                    </Link>
+                    <button
+                      onClick={() => handleDelete(website.id, website.name)}
+                      disabled={deleteLoading === website.id}
+                      className="flex-1 px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-center text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {deleteLoading === website.id ? 'Deleting...' : 'Delete'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-
     </div>
   )
 }

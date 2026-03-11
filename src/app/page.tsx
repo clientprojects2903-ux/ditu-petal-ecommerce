@@ -1,9 +1,23 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import Image from "next/image"
+import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
 import FlowerSection from "@/components/Flower"
+
+import { createClient } from "@/lib/supabase/client" 
+// Types for website data from database
+interface WebsiteData {
+  id: string
+  name: string
+  background_color: string | null
+  image: string | null
+  description: string | null
+  heading: string[] | null
+  side_text: string | null
+  vertical_text: string | null
+  created_at: string | null
+  updated_at: string | null
+}
 
 // Additional flowers data for a new section
 const additionalFlowers = [
@@ -156,6 +170,97 @@ function FlowerCard({
 }
 
 function AdditionalFlowerSection() {
+  const [featuredProducts, setFeaturedProducts] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const supabase = createClient()
+
+  useEffect(() => {
+    async function fetchFeaturedProducts() {
+      try {
+        setLoading(true)
+        const { data, error } = await supabase
+          .from('products')
+          .select(`
+            *,
+            categories (
+              name,
+              slug
+            )
+          `)
+          .eq('is_featured', true)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false })
+          .limit(8)
+
+        if (error) {
+          console.error('Error fetching featured products:', error)
+          return
+        }
+
+        setFeaturedProducts(data || [])
+      } catch (error) {
+        console.error('Error:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchFeaturedProducts()
+  }, [supabase])
+
+  // Function to format price
+  const formatPrice = (price: number) => {
+    return `Rp ${price.toLocaleString('id-ID')}`
+  }
+
+  // Function to get the primary image (thumbnail or first hero image)
+  const getProductImage = (product: any) => {
+    return product.thumbnail || product.hero_image_1 || '/images/placeholder-flower.jpg'
+  }
+
+  // Check if product has promo (has compare_price)
+  const hasPromo = (product: any) => {
+    return product.compare_price && product.compare_price > product.price
+  }
+
+  if (loading) {
+    return (
+      <section className="min-h-screen bg-[#f9f7f4]">
+        <div className="max-w-7xl mx-auto px-4 py-16">
+          <div className="text-center mb-12">
+            <p className="text-[#c4a47c] tracking-widest text-sm font-medium mb-3">
+              SPECIAL COLLECTION
+            </p>
+            <h1 className="text-4xl md:text-5xl mb-4">
+              <span className="text-gray-900 font-serif">Premium</span>{" "}
+              <span className="text-[#c9928e] font-serif italic">Bouquets</span>
+            </h1>
+            <p className="text-gray-600 max-w-2xl mx-auto leading-relaxed">
+              Discover our handcrafted premium bouquets, perfect for every special moment in your life.
+            </p>
+          </div>
+
+          {/* Loading Skeleton */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((item) => (
+              <div key={item} className="bg-white rounded-lg overflow-hidden animate-pulse">
+                <div className="aspect-[4/5] bg-gray-200"></div>
+                <div className="p-4">
+                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-3 bg-gray-200 rounded mb-4"></div>
+                  <div className="flex gap-2">
+                    <div className="flex-1 h-8 bg-gray-200 rounded-full"></div>
+                    <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    )
+  }
+
   return (
     <section className="min-h-screen bg-[#f9f7f4]">
       <div className="max-w-7xl mx-auto px-4 py-16">
@@ -172,14 +277,115 @@ function AdditionalFlowerSection() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {additionalFlowers.map((flower) => (
-            <FlowerCard key={flower.id} flower={flower} />
-          ))}
-        </div>
+        {featuredProducts.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500">No featured products available at the moment.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {featuredProducts.map((product) => (
+              <div key={product.id} className="bg-white rounded-lg overflow-hidden group">
+                <div className="relative aspect-[4/5] overflow-hidden">
+                  <img
+                    src={getProductImage(product)}
+                    alt={product.name}
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    onError={(e) => {
+                      // Fallback image if the image fails to load
+                      e.currentTarget.src = '/images/placeholder-flower.jpg'
+                    }}
+                  />
+                  {hasPromo(product) && (
+                    <span className="absolute top-3 left-3 bg-[#4a7c59] text-white text-xs font-medium px-3 py-1 rounded">
+                      PROMO
+                    </span>
+                  )}
+                </div>
+
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <h3 className="font-medium text-gray-900 text-base">{product.name}</h3>
+                    <div className="text-right flex-shrink-0">
+                      {product.compare_price && (
+                        <p className="text-gray-400 text-sm line-through">
+                          {formatPrice(product.compare_price)}
+                        </p>
+                      )}
+                      <p className="text-[#c4a47c] font-medium">
+                        {formatPrice(product.price)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="text-gray-500 text-sm mb-4 line-clamp-2 min-h-[40px]">
+                    {product.short_description || product.description || 'No description available'}
+                  </p>
+
+                  {/* Display product attributes if available */}
+                  {(product.material || product.color || product.size) && (
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {product.material && (
+                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                          {product.material}
+                        </span>
+                      )}
+                      {product.color && (
+                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                          {product.color}
+                        </span>
+                      )}
+                      {product.size && (
+                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                          {product.size}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2">
+                    <Link 
+                      href={`/product/${product.slug}`}
+                      className="flex-1 border border-[#c4a47c] text-[#c4a47c] py-2 px-4 rounded-full text-sm font-medium hover:bg-[#c4a47c] hover:text-white transition-colors text-center"
+                    >
+                      See Details
+                    </Link>
+                    <button 
+                      className="w-10 h-10 flex items-center justify-center bg-gray-100 rounded-full text-gray-600 hover:bg-[#c4a47c] hover:text-white transition-colors"
+                      aria-label="Add to cart"
+                    >
+                      <CartIcon />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* View All Button */}
+        {featuredProducts.length > 0 && (
+          <div className="text-center mt-12">
+            <Link
+              href="/bouquets"
+              className="inline-flex items-center gap-2 border-2 border-[#c4a47c] text-[#c4a47c] px-8 py-3 rounded-full font-medium hover:bg-[#c4a47c] hover:text-white transition-colors"
+            >
+              View All Bouquets
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </Link>
+          </div>
+        )}
       </div>
     </section>
-  );
+  )
 }
 
 function CustomBouquetSection() {
@@ -977,13 +1183,14 @@ function SendIcon({ className }: { className?: string }) {
 function WhatsAppIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="currentColor" viewBox="0 0 24 24">
-      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
     </svg>
   )
 }
 
+// Define the slide interface
 interface Slide {
-  id: number
+  id: string
   backgroundColor: string
   image: string
   description: string
@@ -992,75 +1199,167 @@ interface Slide {
   verticalText: string
 }
 
-const slides: Slide[] = [
-  {
-    id: 1,
-    backgroundColor: "#3d4a5c",
-    image: "/images/flower-arrangement-1.jpg",
-    description:
-      "It Is Necessary To Have A Reliable Source Of Fresh Flowers: From Wholesale Flower Markets, From Local Farms, Or Import If The Flowers Are Special....",
-    heading: ["PURE FRESHNESS IN", "EVERY PETAL"],
-    sideText: "SOPHISTICATION IN EVERY PETAL",
-    verticalText: "FRESH FLOWER",
-  },
-  {
-    id: 2,
-    backgroundColor: "#6b6b3d",
-    image: "/images/flower-arrangement-2.jpg",
-    description:
-      "I'm Very Happy With My Purchase And Will Definitely Return For Future Occasions.\" I'm Very Happy With My Purchase And Will Definitely Return For Future Occasions.\"",
-    heading: ["THE ART OF FRESH", "BLOOMS"],
-    sideText: "ROMANCE BLOSSOMS WITH FRESH BLOOMS",
-    verticalText: "FRESH FLOWER",
-  },
-  {
-    id: 3,
-    backgroundColor: "#4a5d4a",
-    image: "/images/flower-arrangement-3.jpg",
-    description:
-      "Every Bouquet Tells A Story Of Love And Care. Our Expert Florists Create Stunning Arrangements That Capture The Essence Of Nature's Beauty....",
-    heading: ["NATURE'S FINEST", "SELECTIONS"],
-    sideText: "ELEGANCE IN EVERY ARRANGEMENT",
-    verticalText: "FRESH FLOWER",
-  },
-]
-
 export default function HeroSlider() {
   const [currentSlide, setCurrentSlide] = useState(0)
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [slides, setSlides] = useState<Slide[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [navbarHeight, setNavbarHeight] = useState(80)
+  const navbarRef = useRef<HTMLElement>(null)
+
+  // Measure navbar height
+  useEffect(() => {
+    if (navbarRef.current) {
+      setNavbarHeight(navbarRef.current.offsetHeight)
+    }
+
+    const handleResize = () => {
+      if (navbarRef.current) {
+        setNavbarHeight(navbarRef.current.offsetHeight)
+      }
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  // Fetch slides from Supabase
+  useEffect(() => {
+    async function fetchSlides() {
+      try {
+        setLoading(true)
+        const supabase = createClient()
+        
+        const { data, error } = await supabase
+          .from('websites')
+          .select('*')
+          .order('created_at', { ascending: true })
+
+        if (error) {
+          throw error
+        }
+
+        if (data && data.length > 0) {
+          // Transform the data to match the Slide interface
+          const transformedSlides: Slide[] = data.map((item: WebsiteData) => ({
+            id: item.id,
+            backgroundColor: item.background_color || '#3d4a5c', // Default color if null
+            image: item.image || '/images/flower-arrangement-1.jpg', // Default image if null
+            description: item.description || 'Beautiful flower arrangements for every occasion.',
+            heading: item.heading || ['PURE FRESHNESS IN', 'EVERY PETAL'],
+            sideText: item.side_text || 'SOPHISTICATION IN EVERY PETAL',
+            verticalText: item.vertical_text || 'FRESH FLOWER'
+          }))
+          
+          setSlides(transformedSlides)
+        } else {
+          // If no data, use default slides
+          setSlides(defaultSlides)
+        }
+      } catch (err) {
+        console.error('Error fetching slides:', err)
+        setError('Failed to load slides')
+        // Fallback to default slides
+        setSlides(defaultSlides)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchSlides()
+  }, [])
 
   const goToSlide = useCallback(
     (index: number) => {
-      if (isTransitioning) return
+      if (isTransitioning || slides.length === 0) return
       setIsTransitioning(true)
       setCurrentSlide(index)
       setTimeout(() => setIsTransitioning(false), 700)
     },
-    [isTransitioning]
+    [isTransitioning, slides.length]
   )
 
   const nextSlide = useCallback(() => {
+    if (slides.length === 0) return
     goToSlide((currentSlide + 1) % slides.length)
-  }, [currentSlide, goToSlide])
+  }, [currentSlide, goToSlide, slides.length])
 
   const prevSlide = useCallback(() => {
+    if (slides.length === 0) return
     goToSlide((currentSlide - 1 + slides.length) % slides.length)
-  }, [currentSlide, goToSlide])
+  }, [currentSlide, goToSlide, slides.length])
 
   useEffect(() => {
+    if (slides.length === 0) return
+    
     const interval = setInterval(() => {
       nextSlide()
     }, 5000)
     return () => clearInterval(interval)
-  }, [nextSlide])
+  }, [nextSlide, slides.length])
 
-  const slide = slides[currentSlide]
+  // Default slides as fallback
+  const defaultSlides: Slide[] = [
+    {
+      id: "1",
+      backgroundColor: "#3d4a5c",
+      image: "/images/flower-arrangement-1.jpg",
+      description:
+        "It Is Necessary To Have A Reliable Source Of Fresh Flowers: From Wholesale Flower Markets, From Local Farms, Or Import If The Flowers Are Special....",
+      heading: ["PURE FRESHNESS IN", "EVERY PETAL"],
+      sideText: "SOPHISTICATION IN EVERY PETAL",
+      verticalText: "FRESH FLOWER",
+    },
+    {
+      id: "2",
+      backgroundColor: "#6b6b3d",
+      image: "/images/flower-arrangement-2.jpg",
+      description:
+        "I'm Very Happy With My Purchase And Will Definitely Return For Future Occasions.\" I'm Very Happy With My Purchase And Will Definitely Return For Future Occasions.\"",
+      heading: ["THE ART OF FRESH", "BLOOMS"],
+      sideText: "ROMANCE BLOSSOMS WITH FRESH BLOOMS",
+      verticalText: "FRESH FLOWER",
+    },
+    {
+      id: "3",
+      backgroundColor: "#4a5d4a",
+      image: "/images/flower-arrangement-3.jpg",
+      description:
+        "Every Bouquet Tells A Story Of Love And Care. Our Expert Florists Create Stunning Arrangements That Capture The Essence Of Nature's Beauty....",
+      heading: ["NATURE'S FINEST", "SELECTIONS"],
+      sideText: "ELEGANCE IN EVERY ARRANGEMENT",
+      verticalText: "FRESH FLOWER",
+    },
+  ]
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f9f7f4]">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-[#c4a47c] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading beautiful flowers...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state but still render with default slides
+  if (error || slides.length === 0) {
+    console.warn('Using default slides due to:', error)
+  }
+
+  const slide = slides[currentSlide] || defaultSlides[0]
 
   return (
     <>
-      {/* Fixed Navigation Bar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 px-8 py-6 lg:px-16">
+      {/* Fixed Navigation Bar with ref */}
+      <nav 
+        ref={navbarRef}
+        className="fixed top-0 left-0 right-0 z-50 px-8 py-6 lg:px-16"
+      >
         {/* Blur background overlay */}
         <div 
           className="absolute inset-0 backdrop-blur-md -z-10 transition-colors duration-700"
@@ -1186,6 +1485,9 @@ export default function HeroSlider() {
         </div>
       </nav>
 
+      {/* Spacer div to push content below fixed navbar */}
+      <div style={{ height: navbarHeight }} />
+
       {/* Hero Section */}
       <section
         className="relative min-h-screen w-full overflow-hidden transition-colors duration-700"
@@ -1277,12 +1579,10 @@ export default function HeroSlider() {
                   transform: isTransitioning ? "scale(0.95)" : "scale(1)",
                 }}
               >
-                <Image
+                <img
                   src={slide.image}
                   alt="Beautiful flower arrangement"
-                  fill
-                  className="object-cover transition-transform duration-700"
-                  priority
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700"
                 />
               </div>
 

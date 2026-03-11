@@ -111,10 +111,10 @@ export default function FlowerSection() {
             />
             <div className="absolute inset-0 bg-gradient-to-l from-black/40 via-transparent to-transparent">
               <div className="flex h-full flex-col items-end justify-end p-6 text-right md:p-8">
-                <p className="mb-2 max-w-[250px] text-xs tracking-wide text-white/90 md:text-sm">
+                <p className="mb-2 max-w-[250px] text-xs tracking-wide text-black md:text-sm">
                   Flowers Or Inflorescences Are The Parts
                 </p>
-                <h3 className="font-serif text-3xl font-light italic text-white md:text-4xl">
+                <h3 className="font-serif text-3xl font-light italic text-black md:text-4xl">
                   Nourish Your
                 </h3>
               </div>
