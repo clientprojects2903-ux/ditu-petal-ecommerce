@@ -99,6 +99,64 @@ const DeleteModal = React.memo(({ isOpen, onClose, onConfirm, productName, loadi
 
 DeleteModal.displayName = 'DeleteModal';
 
+// Status Toggle Component
+const StatusToggle = React.memo(({ 
+  productId, 
+  isActive, 
+  onToggle 
+}: { 
+  productId: string; 
+  isActive: boolean | null; 
+  onToggle: (id: string, newStatus: boolean) => Promise<void>;
+}) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleToggle = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      await onToggle(productId, !isActive);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update status');
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center">
+      <button
+        type="button"
+        onClick={handleToggle}
+        disabled={loading}
+        className={`
+          relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent 
+          transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+          ${isActive ? 'bg-green-600' : 'bg-gray-200'}
+          ${loading ? 'opacity-50 cursor-not-allowed' : ''}
+        `}
+        role="switch"
+        aria-checked={isActive || false}
+      >
+        <span
+          className={`
+            pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 
+            transition duration-200 ease-in-out
+            ${isActive ? 'translate-x-5' : 'translate-x-0'}
+          `}
+        />
+      </button>
+      {error && (
+        <span className="ml-2 text-xs text-red-600">{error}</span>
+      )}
+    </div>
+  );
+});
+
+StatusToggle.displayName = 'StatusToggle';
+
 export default function ProductsPage() {
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
@@ -126,9 +184,18 @@ export default function ProductsPage() {
         throw new Error('Failed to fetch products');
       }
 
-      const result: ApiResponse<Product[]> = await response.json();
+      const text = await response.text();
+      if (!text) {
+        throw new Error('Empty response from server');
+      }
 
-      const productsWithCategory = result.data.map(product => ({
+      const result = JSON.parse(text);
+      
+      if (!result.data) {
+        throw new Error('Invalid response format');
+      }
+
+      const productsWithCategory = result.data.map((product: Product) => ({
         ...product,
         category_name: product.categories?.name || 'N/A'
       }));
@@ -141,6 +208,54 @@ export default function ProductsPage() {
       setLoading(false);
     }
   };
+
+  // Handle status toggle
+  const handleStatusToggle = useCallback(async (productId: string, newStatus: boolean) => {
+    try {
+      const response = await fetch(`/api/products/${productId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ is_active: newStatus }),
+      });
+
+      // Check if response is ok
+      if (!response.ok) {
+        let errorMessage = 'Failed to update product status';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch {
+          // If we can't parse JSON, use status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
+      // Try to parse response if it exists
+      const text = await response.text();
+      if (text) {
+        try {
+          JSON.parse(text);
+        } catch {
+          // If response is not valid JSON but we have text, log it
+          console.log('Non-JSON response:', text);
+        }
+      }
+
+      // Update local state regardless of response body
+      setProducts(prevProducts =>
+        prevProducts.map(product =>
+          product.id === productId
+            ? { ...product, is_active: newStatus }
+            : product
+        )
+      );
+    } catch (err) {
+      throw err;
+    }
+  }, []);
 
   // Filter products based on search - Memoized
   const filteredProducts = useMemo(() =>
@@ -206,10 +321,14 @@ export default function ProductsPage() {
         method: 'DELETE',
       });
 
-      const responseData = await response.json();
-
       if (!response.ok) {
-        const errorMessage = responseData.error || responseData.message || 'Failed to delete product';
+        let errorMessage = 'Failed to delete product';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch {
+          errorMessage = response.statusText || errorMessage;
+        }
         throw new Error(errorMessage);
       }
 
@@ -351,10 +470,11 @@ export default function ProductsPage() {
                     <div className="text-sm text-gray-900">{product.stock || 0}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${product.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                      {product.is_active ? 'Active' : 'Inactive'}
-                    </span>
+                    <StatusToggle
+                      productId={product.id}
+                      isActive={product.is_active}
+                      onToggle={handleStatusToggle}
+                    />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">

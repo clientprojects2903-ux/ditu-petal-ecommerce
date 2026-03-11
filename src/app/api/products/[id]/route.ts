@@ -37,6 +37,55 @@ export async function GET(
   }
 }
 
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    // Await the params first
+    const { id } = await params;
+    const body = await request.json();
+    
+    // Only update the fields that are provided
+    // Remove fields that shouldn't be updated
+    const { id: _, created_at, categories, ...updateData } = body;
+    
+    // Clean the data - convert empty strings to null
+    const cleanedData = Object.fromEntries(
+      Object.entries(updateData).map(([key, value]) => [
+        key,
+        value === '' ? null : value
+      ])
+    );
+
+    console.log('Patching product with ID:', id);
+    console.log('Patch data:', cleanedData);
+
+    const { data, error } = await supabase
+      .from('products')
+      .update({ ...cleanedData, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Supabase error:', error);
+      return NextResponse.json(
+        { error: error.message, details: error },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json({ data });
+  } catch (error) {
+    console.error('Server error:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Failed to update product' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
