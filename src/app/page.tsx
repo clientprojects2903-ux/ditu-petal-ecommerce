@@ -903,8 +903,8 @@ function ContactSection() {
           {submitStatus.type && (
             <div
               className={`mb-4 lg:mb-6 p-3 lg:p-4 rounded-lg ${submitStatus.type === 'success'
-                  ? 'bg-green-50 text-green-800 border border-green-200'
-                  : 'bg-red-50 text-red-800 border border-red-200'
+                ? 'bg-green-50 text-green-800 border border-green-200'
+                : 'bg-red-50 text-red-800 border border-red-200'
                 }`}
             >
               <div className="flex items-center gap-2">
@@ -1510,7 +1510,7 @@ export default function HeroSlider() {
             <img
               src="https://wuwjfagcfhowbwqwujka.supabase.co/storage/v1/object/public/website-assets/Black_White_Minimalist_Beauty_Typography_Logo_20260302_154544_0000-removebg-preview.png"
               alt="DituPetal Logo"
-              className="h-8 lg:h-10 w-auto object-contain"
+              className="h-15 lg:h-10 w-auto object-contain"
             />
           </Link>
 
@@ -1535,25 +1535,41 @@ export default function HeroSlider() {
 
           {/* Right Icons */}
           <div className="hidden items-center space-x-6 lg:flex">
-            <button className="text-white/90 transition-colors hover:text-white" aria-label="Search">
+
+            <a
+              href="/search"
+              className="text-white/90 transition-colors hover:text-white"
+              aria-label="Search"
+            >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="11" cy="11" r="8" />
                 <path d="M21 21l-4.35-4.35" />
               </svg>
-            </button>
-            <button className="text-white/90 transition-colors hover:text-white" aria-label="Account">
+            </a>
+
+            <a
+              href="/login"
+              className="text-white/90 transition-colors hover:text-white"
+              aria-label="Account"
+            >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                 <circle cx="12" cy="7" r="4" />
               </svg>
-            </button>
-            <button className="text-white/90 transition-colors hover:text-white" aria-label="Cart">
+            </a>
+
+            <a
+              href="/cart"
+              className="text-white/90 transition-colors hover:text-white"
+              aria-label="Cart"
+            >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="9" cy="21" r="1" />
                 <circle cx="20" cy="21" r="1" />
                 <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
               </svg>
-            </button>
+            </a>
+
           </div>
 
           {/* Mobile Menu Button */}
