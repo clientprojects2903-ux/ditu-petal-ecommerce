@@ -210,52 +210,49 @@ export default function ProductsPage() {
   };
 
   // Handle status toggle
-  const handleStatusToggle = useCallback(async (productId: string, newStatus: boolean) => {
+  // Handle status toggle
+const handleStatusToggle = useCallback(async (productId: string, newStatus: boolean) => {
+  const response = await fetch(`/api/products/${productId}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ is_active: newStatus }),
+  });
+
+  // Check if response is ok
+  if (!response.ok) {
+    let errorMessage = 'Failed to update product status';
     try {
-      const response = await fetch(`/api/products/${productId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ is_active: newStatus }),
-      });
-
-      // Check if response is ok
-      if (!response.ok) {
-        let errorMessage = 'Failed to update product status';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorData.message || errorMessage;
-        } catch {
-          // If we can't parse JSON, use status text
-          errorMessage = response.statusText || errorMessage;
-        }
-        throw new Error(errorMessage);
-      }
-
-      // Try to parse response if it exists
-      const text = await response.text();
-      if (text) {
-        try {
-          JSON.parse(text);
-        } catch {
-          // If response is not valid JSON but we have text, log it
-          console.log('Non-JSON response:', text);
-        }
-      }
-
-      // Update local state regardless of response body
-      setProducts(prevProducts =>
-        prevProducts.map(product =>
-          product.id === productId
-            ? { ...product, is_active: newStatus }
-            : product
-        )
-      );
-    } catch (err) {
-      throw err;
+      const errorData = await response.json();
+      errorMessage = errorData.error || errorData.message || errorMessage;
+    } catch {
+      // If we can't parse JSON, use status text
+      errorMessage = response.statusText || errorMessage;
     }
-  }, []);
+    throw new Error(errorMessage);
+  }
+
+  // Try to parse response if it exists
+  const text = await response.text();
+  if (text) {
+    try {
+      JSON.parse(text);
+    } catch {
+      // If response is not valid JSON but we have text, log it
+      console.log('Non-JSON response:', text);
+    }
+  }
+
+  // Update local state regardless of response body
+  setProducts(prevProducts =>
+    prevProducts.map(product =>
+      product.id === productId
+        ? { ...product, is_active: newStatus }
+        : product
+    )
+  );
+}, []);
 
   // Filter products based on search - Memoized
   const filteredProducts = useMemo(() =>
