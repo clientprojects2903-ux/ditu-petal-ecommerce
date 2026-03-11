@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
 import FlowerSection from "@/components/Flower"
 
-import { createClient } from "@/lib/supabase/client" 
+import { createClient } from "@/lib/supabase/client"
 // Types for website data from database
 interface WebsiteData {
   id: string
@@ -343,13 +343,13 @@ function AdditionalFlowerSection() {
                   )}
 
                   <div className="flex items-center gap-2">
-                    <Link 
+                    <Link
                       href={`/product/${product.slug}`}
                       className="flex-1 border border-[#c4a47c] text-[#c4a47c] py-2 px-4 rounded-full text-sm font-medium hover:bg-[#c4a47c] hover:text-white transition-colors text-center"
                     >
                       See Details
                     </Link>
-                    <button 
+                    <button
                       className="w-10 h-10 flex items-center justify-center bg-gray-100 rounded-full text-gray-600 hover:bg-[#c4a47c] hover:text-white transition-colors"
                       aria-label="Add to cart"
                     >
@@ -725,12 +725,12 @@ function ContactSection() {
     type: 'success' | 'error' | null;
     message: string;
   }>({ type: null, message: '' })
-  
+
   const supabase = createClient()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     // Validate form
     if (!formData.fullName.trim() || !formData.email.trim() || !formData.message.trim()) {
       setSubmitStatus({
@@ -779,7 +779,7 @@ function ContactSection() {
         phone: "",
         message: "",
       })
-      
+
       setSubmitStatus({
         type: 'success',
         message: 'Thank you for your message! We\'ll get back to you soon.'
@@ -902,11 +902,10 @@ function ContactSection() {
           {/* Status Message */}
           {submitStatus.type && (
             <div
-              className={`mb-4 lg:mb-6 p-3 lg:p-4 rounded-lg ${
-                submitStatus.type === 'success' 
-                  ? 'bg-green-50 text-green-800 border border-green-200' 
+              className={`mb-4 lg:mb-6 p-3 lg:p-4 rounded-lg ${submitStatus.type === 'success'
+                  ? 'bg-green-50 text-green-800 border border-green-200'
                   : 'bg-red-50 text-red-800 border border-red-200'
-              }`}
+                }`}
             >
               <div className="flex items-center gap-2">
                 {submitStatus.type === 'success' ? (
@@ -1322,7 +1321,7 @@ function SendIcon({ className }: { className?: string }) {
 function WhatsAppIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="currentColor" viewBox="0 0 24 24">
-      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
     </svg>
   )
 }
@@ -1370,7 +1369,7 @@ export default function HeroSlider() {
       try {
         setLoading(true)
         const supabase = createClient()
-        
+
         const { data, error } = await supabase
           .from('websites')
           .select('*')
@@ -1391,7 +1390,7 @@ export default function HeroSlider() {
             sideText: item.side_text || 'SOPHISTICATION IN EVERY PETAL',
             verticalText: item.vertical_text || 'FRESH FLOWER'
           }))
-          
+
           setSlides(transformedSlides)
         } else {
           // If no data, use default slides
@@ -1432,7 +1431,7 @@ export default function HeroSlider() {
 
   useEffect(() => {
     if (slides.length === 0) return
-    
+
     const interval = setInterval(() => {
       nextSlide()
     }, 5000)
@@ -1495,20 +1494,24 @@ export default function HeroSlider() {
   return (
     <>
       {/* Fixed Navigation Bar with ref */}
-      <nav 
+      <nav
         ref={navbarRef}
         className="fixed top-0 left-0 right-0 z-50 px-4 py-4 lg:px-8 lg:py-6"
       >
         {/* Blur background overlay */}
-        <div 
+        <div
           className="absolute inset-0 backdrop-blur-md -z-10 transition-colors duration-700"
           style={{ backgroundColor: `${slide.backgroundColor}80` }} // 50% opacity background
         />
-        
+
         <div className="relative mx-auto flex max-w-[1800px] items-center justify-between">
           {/* Logo - Updated to DituPetal */}
-          <Link href="/" className="text-xl lg:text-2xl font-light tracking-widest text-white">
-            DITU<span className="font-serif text-[#c9a227]">PETAL</span>
+          <Link href="/" className="flex items-center">
+            <img
+              src="https://wuwjfagcfhowbwqwujka.supabase.co/storage/v1/object/public/website-assets/Black_White_Minimalist_Beauty_Typography_Logo_20260302_154544_0000-removebg-preview.png"
+              alt="DituPetal Logo"
+              className="h-8 lg:h-10 w-auto object-contain"
+            />
           </Link>
 
           {/* Desktop Navigation */}
@@ -1560,28 +1563,24 @@ export default function HeroSlider() {
             aria-label="Toggle menu"
           >
             <span
-              className={`block h-0.5 w-6 transform bg-white transition-all duration-300 ${
-                isMenuOpen ? "translate-y-2 rotate-45" : ""
-              }`}
+              className={`block h-0.5 w-6 transform bg-white transition-all duration-300 ${isMenuOpen ? "translate-y-2 rotate-45" : ""
+                }`}
             />
             <span
-              className={`block h-0.5 w-6 bg-white transition-all duration-300 ${
-                isMenuOpen ? "opacity-0" : ""
-              }`}
+              className={`block h-0.5 w-6 bg-white transition-all duration-300 ${isMenuOpen ? "opacity-0" : ""
+                }`}
             />
             <span
-              className={`block h-0.5 w-6 transform bg-white transition-all duration-300 ${
-                isMenuOpen ? "-translate-y-2 -rotate-45" : ""
-              }`}
+              className={`block h-0.5 w-6 transform bg-white transition-all duration-300 ${isMenuOpen ? "-translate-y-2 -rotate-45" : ""
+                }`}
             />
           </button>
         </div>
 
         {/* Mobile Menu */}
         <div
-          className={`fixed inset-0 z-40 flex h-screen w-full flex-col items-center justify-center backdrop-blur-md transition-transform duration-500 lg:hidden ${
-            isMenuOpen ? "translate-x-0" : "translate-x-full"
-          }`}
+          className={`fixed inset-0 z-40 flex h-screen w-full flex-col items-center justify-center backdrop-blur-md transition-transform duration-500 lg:hidden ${isMenuOpen ? "translate-x-0" : "translate-x-full"
+            }`}
           style={{ backgroundColor: `${slide.backgroundColor}CC` }}
         >
           <div className="flex flex-col items-center space-y-6">
@@ -1786,9 +1785,8 @@ export default function HeroSlider() {
             <button
               key={index}
               onClick={() => goToSlide(index)}
-              className={`h-1.5 lg:h-2 rounded-full transition-all duration-300 ${
-                index === currentSlide ? "w-6 lg:w-8 bg-white" : "w-1.5 lg:w-2 bg-white/40 hover:bg-white/60"
-              }`}
+              className={`h-1.5 lg:h-2 rounded-full transition-all duration-300 ${index === currentSlide ? "w-6 lg:w-8 bg-white" : "w-1.5 lg:w-2 bg-white/40 hover:bg-white/60"
+                }`}
               aria-label={`Go to slide ${index + 1}`}
             />
           ))}
@@ -1797,7 +1795,7 @@ export default function HeroSlider() {
 
       {/* First Flower Section (imported) */}
       <FlowerSection />
-      
+
       {/* Second Flower Section (additional) */}
       <AdditionalFlowerSection />
 
