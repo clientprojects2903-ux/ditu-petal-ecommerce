@@ -1715,13 +1715,13 @@ export default function HeroSlider() {
               </h1>
 
               <button className="group inline-flex items-center gap-0 overflow-hidden rounded-full bg-white/90 pr-1 transition-all duration-300 hover:bg-white">
-                <span className="px-4 lg:px-6 py-2 lg:py-3 text-xs lg:text-sm font-medium tracking-wide text-gray-800">Shop Now</span>
-                <span className="flex h-8 w-8 lg:h-10 lg:w-10 items-center justify-center rounded-full bg-[#c9a227] transition-transform duration-300 group-hover:rotate-45">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" className="lg:w-4 lg:h-4">
-                    <path d="M7 17L17 7M17 7H7M17 7v10" />
-                  </svg>
-                </span>
-              </button>
+  <span className="px-6 py-3 sm:px-4 sm:py-2 lg:px-6 lg:py-3 text-sm sm:text-xs lg:text-sm font-medium tracking-wide text-gray-800">Shop Now</span>
+  <span className="flex h-10 w-10 sm:h-8 sm:w-8 lg:h-10 lg:w-10 items-center justify-center rounded-full bg-[#c9a227] transition-transform duration-300 group-hover:rotate-45">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" className="lg:w-4 lg:h-4">
+      <path d="M7 17L17 7M17 7H7M17 7v10" />
+    </svg>
+  </span>
+</button>
             </div>
 
             {/* Center image */}
