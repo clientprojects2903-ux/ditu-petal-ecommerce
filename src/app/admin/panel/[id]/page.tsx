@@ -47,7 +47,7 @@ export default function ViewBannerPage() {
     } catch (error) {
       console.error('Error fetching banner:', error)
       alert('Error fetching banner')
-      router.push('/admin/banners')
+      router.push('/admin/panel')
     } finally {
       setLoading(false)
     }
@@ -69,7 +69,7 @@ export default function ViewBannerPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-600">Banner not found</p>
-          <Link href="/admin/banners" className="text-blue-600 hover:text-blue-800 mt-4 inline-block">
+          <Link href="/admin/panel" className="text-blue-600 hover:text-blue-800 mt-4 inline-block">
             Back to Banners
           </Link>
         </div>
@@ -84,7 +84,7 @@ export default function ViewBannerPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <Link
-                href="/admin/banners"
+                href="/admin/panel"
                 className="text-gray-600 hover:text-gray-900"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -98,7 +98,7 @@ export default function ViewBannerPage() {
             </div>
             <div className="flex space-x-3">
               <Link
-                href={`/admin/banners/${id}/edit`}
+                href={`/admin/panel/${id}/edit`}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Edit Banner

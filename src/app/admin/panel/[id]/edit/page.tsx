@@ -240,7 +240,7 @@ export default function EditBannerPage() {
       if (error) throw error
 
       alert('Banner updated successfully!')
-      router.push(`/admin/banners/${id}`)
+      router.push(`/admin/panel/${id}`)
       router.refresh()
     } catch (error) {
       console.error('Error updating banner:', error)
@@ -274,7 +274,7 @@ export default function EditBannerPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <Link
-                href={`/admin/banners/${id}`}
+                href={`/admin/panel/${id}`}
                 className="text-gray-600 hover:text-gray-900"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -432,7 +432,7 @@ export default function EditBannerPage() {
               Reset Changes
             </button>
             <Link
-              href={`/admin/banners/${id}`}
+              href={`/admin/panel/${id}`}
               className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
               Cancel

@@ -14,7 +14,7 @@ interface Banner {
   created_at: string | null
   updated_at: string | null
 }
-20.1
+
 export default function BannersListPage() {
   const [banners, setBanners] = useState<Banner[]>([])
   const [loading, setLoading] = useState(true)         

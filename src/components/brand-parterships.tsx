@@ -96,7 +96,7 @@ interface Campaign {
   created_at: string
   updated_at: string
 }
-
+  
 // Brand Interface
 interface Brand {
   brand_id: string
