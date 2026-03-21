@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
-import { FaProductHunt } from 'react-icons/fa'
+import { FaPhotoVideo, FaProductHunt } from 'react-icons/fa'
 import { TbCategory } from 'react-icons/tb'
 
 type UserRole = 'influencer' | 'brand' | 'admin' | null
@@ -85,6 +85,14 @@ export function Sidebar() {
   roles: ['admin'],
   matchExact: true
 },
+ 
+    {
+      id: 'Banner',
+      label: 'Banner',
+      icon: <FaPhotoVideo size={20} />,
+      href: '/admin/panel',
+      roles: ['admin']
+    },
     {
       id: 'product',
       label: 'Products',
@@ -108,14 +116,7 @@ export function Sidebar() {
     : '/unauthorized',
   roles: ['admin'],
 },
-    
-    {
-      id: 'Panel',
-      label: 'Panel',
-      icon: <TrendingUp size={20} />,
-      href: '/admin/panel',
-      roles: ['admin']
-    },
+   
     {
   id: 'ContactQueries',
   label: 'Contact Queries',

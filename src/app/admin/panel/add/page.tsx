@@ -273,11 +273,11 @@ export default function AddBannerPage() {
             <p className="text-xs text-gray-500 mt-2">
               Recommended size: 1920x1080px. Max size: 5MB
             </p>
-          </div>
+          </div> 
 
           {/* Description */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-xl font-semibold mb-4">Description</h2>
+            <h2 className="text-xl font-semibold mb-4">Banner Eyebrow</h2>
             
             <textarea
               name="description"
@@ -285,7 +285,7 @@ export default function AddBannerPage() {
               onChange={handleInputChange}
               rows={4}
               className="w-full border px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Enter banner description..."
+              placeholder="Enter banner eyebrow"
             />
           </div>
             
@@ -313,7 +313,7 @@ export default function AddBannerPage() {
           
           {/* Side Text and Vertical Text */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-xl font-semibold mb-4">Additional Text</h2>
+            <h2 className="text-xl font-semibold mb-4">Additional Backgroud Overlay Text</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
