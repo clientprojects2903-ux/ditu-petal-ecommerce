@@ -6,9 +6,10 @@ import { useDropzone } from 'react-dropzone'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
+import ClassicEditor from '@ckeditor/ckeditor5-build-classic'
 
 // Dynamically import CKEditor with no SSR
-const CKEditor = dynamic(
+const CKEditorComponent = dynamic(
   () => import('@ckeditor/ckeditor5-react').then(mod => mod.CKEditor),
   { 
     ssr: false,
@@ -22,8 +23,45 @@ const CKEditor = dynamic(
   }
 )
 
-// Import ClassicEditor as a dynamic import to avoid type issues
-import type ClassicEditorType from '@ckeditor/ckeditor5-build-classic'
+// Rich Text Editor Wrapper Component to handle type issues
+function RichTextEditor({ 
+  data, 
+  onChange, 
+  config 
+}: { 
+  data: string; 
+  onChange: (data: string) => void; 
+  config: any;
+}) {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return (
+      <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 h-64 flex items-center justify-center">
+        <div className="animate-pulse text-gray-400">Loading editor...</div>
+      </div>
+    )
+  }
+
+  return (
+    <CKEditorComponent
+      editor={ClassicEditor as any}
+      data={data}
+      config={config}
+      onChange={(event: any, editor: any) => {
+        const editorData = editor.getData()
+        onChange(editorData)
+      }}
+      onReady={(editor: any) => {
+        console.log('Editor is ready to use!', editor)
+      }}
+    />
+  )
+}
 
 interface Banner {
   id: string
@@ -139,8 +177,6 @@ export default function EditBannerPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState<BannerFormData | null>(null)
-  const [mounted, setMounted] = useState(false)
-  const [editor, setEditor] = useState<any>(null)
   
   const params = useParams()
   const router = useRouter()
@@ -152,18 +188,8 @@ export default function EditBannerPage() {
   )
 
   useEffect(() => {
-    setMounted(true)
     fetchBanner()
   }, [id])
-
-  // Dynamically import ClassicEditor only on client side
-  useEffect(() => {
-    if (mounted) {
-      import('@ckeditor/ckeditor5-build-classic').then((module) => {
-        setEditor(() => module.default)
-      })
-    }
-  }, [mounted])
 
   const fetchBanner = async () => {
     try {
@@ -285,7 +311,7 @@ export default function EditBannerPage() {
     }
   }
 
-  // CKEditor configuration with all features - FIXED WITH TYPE ASSERTION
+  // CKEditor configuration
   const editorConfig = {
     toolbar: {
       items: [
@@ -328,16 +354,10 @@ export default function EditBannerPage() {
         { model: 'heading4', view: 'h4', title: 'Heading 4', class: 'ck-heading_heading4' },
         { model: 'heading5', view: 'h5', title: 'Heading 5', class: 'ck-heading_heading5' },
         { model: 'heading6', view: 'h6', title: 'Heading 6', class: 'ck-heading_heading6' }
-      ] as const
+      ]
     },
     fontSize: {
-      options: [
-        'tiny',
-        'small',
-        'default',
-        'big',
-        'huge'
-      ]
+      options: ['tiny', 'small', 'default', 'big', 'huge']
     },
     fontFamily: {
       options: [
@@ -513,25 +533,11 @@ export default function EditBannerPage() {
               </label>
               
               <div className="ckeditor-container">
-                {editor && mounted && (
-                  <CKEditor
-                    editor={editor}
-                    data={formData.heading}
-                    config={editorConfig as any}
-                    onChange={(event: any, editor: any) => {
-                      const data = editor.getData()
-                      handleHeadingChange(data)
-                    }}
-                    onReady={(editor: any) => {
-                      console.log('Editor is ready to use!', editor)
-                    }}
-                  />
-                )}
-                {(!editor || !mounted) && (
-                  <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 h-64 flex items-center justify-center">
-                    <div className="animate-pulse text-gray-400">Loading editor...</div>
-                  </div>
-                )}
+                <RichTextEditor
+                  data={formData.heading}
+                  onChange={handleHeadingChange}
+                  config={editorConfig}
+                />
               </div>
               
               <div className="flex items-center justify-between text-xs text-gray-500 mt-2">
@@ -642,6 +648,18 @@ export default function EditBannerPage() {
         }
         .ckeditor-container .ck-content h3 {
           font-size: 1.17em;
+          font-weight: bold;
+        }
+        .ckeditor-container .ck-content h4 {
+          font-size: 1em;
+          font-weight: bold;
+        }
+        .ckeditor-container .ck-content h5 {
+          font-size: 0.83em;
+          font-weight: bold;
+        }
+        .ckeditor-container .ck-content h6 {
+          font-size: 0.67em;
           font-weight: bold;
         }
         .ckeditor-container .ck-content p {
