@@ -2,13 +2,31 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
+type CategoryType = 'parent' | 'sub' | 'child'
+
+interface ParentCategory {
+  id: string
+  name: string
+}
+
+interface SubCategory {
+  id: string
+  name: string
+}
+
 export default function AddCategoryPage() {
   const router = useRouter()
+  const [categoryType, setCategoryType] = useState<CategoryType>('parent')
   const [loading, setLoading] = useState(false)
+  const [parentCategories, setParentCategories] = useState<ParentCategory[]>([])
+  const [subCategories, setSubCategories] = useState<SubCategory[]>([])
+  const [selectedParentId, setSelectedParentId] = useState('')
+  const [selectedSubCategoryId, setSelectedSubCategoryId] = useState('')
+  
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
@@ -20,6 +38,50 @@ export default function AddCategoryPage() {
 
   const supabase = createClient()
 
+  // Fetch parent categories when needed
+  useEffect(() => {
+    if (categoryType === 'sub' || categoryType === 'child') {
+      fetchParentCategories()
+    }
+  }, [categoryType])
+
+  // Fetch sub categories when parent is selected
+  useEffect(() => {
+    if (categoryType === 'child' && selectedParentId) {
+      fetchSubCategories(selectedParentId)
+    }
+  }, [selectedParentId, categoryType])
+
+  const fetchParentCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('id, name')
+        .order('name')
+      
+      if (error) throw error
+      setParentCategories(data || [])
+    } catch (error) {
+      console.error('Error fetching parent categories:', error)
+    }
+  }
+
+  const fetchSubCategories = async (categoryId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('sub_categories')
+        .select('id, name')
+        .eq('category_id', categoryId)
+        .order('name')
+      
+      if (error) throw error
+      setSubCategories(data || [])
+      setSelectedSubCategoryId('') // Reset sub category selection
+    } catch (error) {
+      console.error('Error fetching sub categories:', error)
+    }
+  }
+
   // Generate slug from name
   const generateSlug = (text: string) => {
     return text
@@ -29,7 +91,7 @@ export default function AddCategoryPage() {
   }
 
   // Handle form input changes
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData(prev => {
       const newData = { ...prev, [name]: value }
@@ -55,33 +117,102 @@ export default function AddCategoryPage() {
         return
       }
 
-      const { error } = await supabase
-        .from('categories')
-        .insert([{
-          name: formData.name,
-          slug: formData.slug,
-          description: formData.description || null,
-          seo_title: formData.seo_title || null,
-          seo_description: formData.seo_description || null,
-          seo_keywords: formData.seo_keywords || null
-        }])
+      let error = null
+
+      if (categoryType === 'parent') {
+        // Create parent category
+        const { error: insertError } = await supabase
+          .from('categories')
+          .insert([{
+            name: formData.name,
+            slug: formData.slug,
+            description: formData.description || null,
+            seo_title: formData.seo_title || null,
+            seo_description: formData.seo_description || null,
+            seo_keywords: formData.seo_keywords || null
+          }])
+        error = insertError
+      } 
+      else if (categoryType === 'sub') {
+        // Create sub category - requires parent category
+        if (!selectedParentId) {
+          alert('Please select a parent category')
+          return
+        }
+        
+        const { error: insertError } = await supabase
+          .from('sub_categories')
+          .insert([{
+            category_id: selectedParentId,
+            name: formData.name,
+            slug: formData.slug,
+            description: formData.description || null,
+            seo_title: formData.seo_title || null,
+            seo_description: formData.seo_description || null,
+            seo_keywords: formData.seo_keywords || null
+          }])
+        error = insertError
+      }
+      else if (categoryType === 'child') {
+        // Create child category - requires parent category and sub category
+        if (!selectedParentId) {
+          alert('Please select a parent category')
+          return
+        }
+        if (!selectedSubCategoryId) {
+          alert('Please select a sub category')
+          return
+        }
+        
+        const { error: insertError } = await supabase
+          .from('child_categories')
+          .insert([{
+            category_id: selectedParentId,
+            sub_category_id: selectedSubCategoryId,
+            name: formData.name,
+            slug: formData.slug,
+            description: formData.description || null,
+            seo_title: formData.seo_title || null,
+            seo_description: formData.seo_description || null,
+            seo_keywords: formData.seo_keywords || null
+          }])
+        error = insertError
+      }
 
       if (error) {
         if (error.message.includes('duplicate key') || error.message.includes('unique constraint')) {
-          alert('A category with this slug already exists')
+          alert(`A ${categoryType} category with this slug already exists`)
         } else {
           throw error
         }
       } else {
-        alert('Category created successfully')
-        router.push('/admin/category')
+        alert(`${categoryType === 'parent' ? 'Category' : categoryType === 'sub' ? 'Sub category' : 'Child category'} created successfully`)
+        router.push('/admin/categories')
         router.refresh()
       }
     } catch (error) {
-      console.error('Error creating category:', error)
-      alert('Error creating category')
+      console.error(`Error creating ${categoryType} category:`, error)
+      alert(`Error creating ${categoryType} category`)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const getTitle = () => {
+    switch(categoryType) {
+      case 'parent': return 'Add New Category'
+      case 'sub': return 'Add New Sub Category'
+      case 'child': return 'Add New Child Category'
+      default: return 'Add New Category'
+    }
+  }
+
+  const getButtonText = () => {
+    switch(categoryType) {
+      case 'parent': return 'Create Category'
+      case 'sub': return 'Create Sub Category'
+      case 'child': return 'Create Child Category'
+      default: return 'Create'
     }
   }
 
@@ -90,15 +221,148 @@ export default function AddCategoryPage() {
       <div className="bg-white rounded-lg shadow-lg p-6 max-w-4xl mx-auto">
         <div className="flex items-center mb-6">
           <Link
-            href="/admin/category"
+            href="/admin/categories"
             className="text-gray-600 hover:text-gray-800 mr-4"
           >
             ← Back
           </Link>
-          <h1 className="text-2xl font-bold text-gray-800">Add New Category</h1>
+          <h1 className="text-2xl font-bold text-gray-800">{getTitle()}</h1>
+        </div>
+
+        {/* Category Type Selection Tabs */}
+        <div className="mb-6">
+          <div className="flex space-x-4 border-b border-gray-200">
+            <button
+              type="button"
+              onClick={() => {
+                setCategoryType('parent')
+                setSelectedParentId('')
+                setSelectedSubCategoryId('')
+                setFormData({
+                  name: '',
+                  slug: '',
+                  description: '',
+                  seo_title: '',
+                  seo_description: '',
+                  seo_keywords: ''
+                })
+              }}
+              className={`px-4 py-2 font-medium text-sm rounded-t-lg transition-colors ${
+                categoryType === 'parent'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              Parent Category
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setCategoryType('sub')
+                setSelectedSubCategoryId('')
+                setFormData({
+                  name: '',
+                  slug: '',
+                  description: '',
+                  seo_title: '',
+                  seo_description: '',
+                  seo_keywords: ''
+                })
+              }}
+              className={`px-4 py-2 font-medium text-sm rounded-t-lg transition-colors ${
+                categoryType === 'sub'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              Sub Category
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setCategoryType('child')
+                setFormData({
+                  name: '',
+                  slug: '',
+                  description: '',
+                  seo_title: '',
+                  seo_description: '',
+                  seo_keywords: ''
+                })
+              }}
+              className={`px-4 py-2 font-medium text-sm rounded-t-lg transition-colors ${
+                categoryType === 'child'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              Child Category
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit}>
+          {/* Parent Category Selection (for sub and child categories) */}
+          {(categoryType === 'sub' || categoryType === 'child') && (
+            <div className="mb-8">
+              <h2 className="text-lg font-semibold text-gray-700 mb-4 pb-2 border-b">Parent Category</h2>
+              
+              <div className="mb-4">
+                <label htmlFor="parentCategory" className="block text-sm font-medium text-gray-700 mb-2">
+                  Parent Category *
+                </label>
+                <select
+                  id="parentCategory"
+                  value={selectedParentId}
+                  onChange={(e) => setSelectedParentId(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
+                >
+                  <option value="">Select a parent category</option>
+                  {parentCategories.map(category => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+
+          {/* Sub Category Selection (for child categories) */}
+          {categoryType === 'child' && selectedParentId && (
+            <div className="mb-8">
+              <h2 className="text-lg font-semibold text-gray-700 mb-4 pb-2 border-b">Sub Category</h2>
+              
+              <div className="mb-4">
+                <label htmlFor="subCategory" className="block text-sm font-medium text-gray-700 mb-2">
+                  Sub Category *
+                </label>
+                <select
+                  id="subCategory"
+                  value={selectedSubCategoryId}
+                  onChange={(e) => setSelectedSubCategoryId(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading || subCategories.length === 0}
+                >
+                  <option value="">Select a sub category</option>
+                  {subCategories.map(sub => (
+                    <option key={sub.id} value={sub.id}>
+                      {sub.name}
+                    </option>
+                  ))}
+                </select>
+                {subCategories.length === 0 && selectedParentId && (
+                  <p className="text-xs text-red-500 mt-1">
+                    No sub categories found for this parent category. Please create a sub category first.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Basic Information */}
           <div className="mb-8">
             <h2 className="text-lg font-semibold text-gray-700 mb-4 pb-2 border-b">Basic Information</h2>
@@ -115,7 +379,7 @@ export default function AddCategoryPage() {
                 onChange={handleInputChange}
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter category name"
+                placeholder={`Enter ${categoryType} category name`}
                 disabled={loading}
               />
             </div>
@@ -151,7 +415,7 @@ export default function AddCategoryPage() {
                 onChange={handleInputChange}
                 rows={3}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter category description (optional)"
+                placeholder={`Enter ${categoryType} category description (optional)`}
                 disabled={loading}
               />
             </div>
@@ -240,7 +504,7 @@ export default function AddCategoryPage() {
                   Creating...
                 </span>
               ) : (
-                'Create Category'
+                getButtonText()
               )}
             </button>
           </div>
