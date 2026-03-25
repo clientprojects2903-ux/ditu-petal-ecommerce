@@ -11,6 +11,9 @@ interface Banner {
   background_color: string | null
   image: string | null
   description: string | null
+  heading: string | null  // Added heading field
+  side_text: string | null  // Added side_text
+  vertical_text: string | null  // Added vertical_text
   created_at: string | null
   updated_at: string | null
 }
@@ -71,6 +74,14 @@ export default function BannersListPage() {
     }
   }
 
+  // Helper function to strip HTML tags for preview
+  const stripHtml = (html: string | null) => {
+    if (!html) return ''
+    const tmp = document.createElement('div')
+    tmp.innerHTML = html
+    return tmp.textContent || tmp.innerText || ''
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -126,8 +137,9 @@ export default function BannersListPage() {
             {banners.map((banner) => (
               <div
                 key={banner.id}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
+                className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow flex flex-col"
               >
+                {/* Image Section */}
                 {banner.image ? (
                   <div className="h-48 overflow-hidden">
                     <img
@@ -145,13 +157,47 @@ export default function BannersListPage() {
                   </div>
                 )}
                 
-                <div className="p-6">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">{banner.name}</h3>
+                {/* Content Section */}
+                <div className="p-6 flex-1 flex flex-col">
+                  {/* Banner Name */}
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2 line-clamp-1">
+                    {banner.name}
+                  </h3>
                   
-                  {banner.description && (
-                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">{banner.description}</p>
+                  {/* Heading Preview (if exists) */}
+                  {banner.heading && (
+                    <div className="mb-3">
+                      <div className="text-xs text-gray-500 mb-1">Heading Preview:</div>
+                      <div className="text-sm text-gray-700 line-clamp-2 rich-text-preview">
+                        {stripHtml(banner.heading)}
+                      </div>
+                    </div>
                   )}
                   
+                  {/* Description/Eyebrow */}
+                  {banner.description && (
+                    <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                      {banner.description}
+                    </p>
+                  )}
+                  
+                  {/* Side Text & Vertical Text Indicators */}
+                  {(banner.side_text || banner.vertical_text) && (
+                    <div className="flex gap-3 mb-3 text-xs">
+                      {banner.side_text && (
+                        <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded">
+                          Side: {banner.side_text.length > 20 ? banner.side_text.substring(0, 20) + '...' : banner.side_text}
+                        </span>
+                      )}
+                      {banner.vertical_text && (
+                        <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded">
+                          Vertical: {banner.vertical_text.length > 20 ? banner.vertical_text.substring(0, 20) + '...' : banner.vertical_text}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Date */}
                   <div className="flex items-center text-sm text-gray-500 mb-4">
                     <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -159,7 +205,8 @@ export default function BannersListPage() {
                     <span>Created: {new Date(banner.created_at || '').toLocaleDateString()}</span>
                   </div>
                   
-                  <div className="flex space-x-2">
+                  {/* Action Buttons */}
+                  <div className="flex space-x-2 mt-auto">
                     <Link
                       href={`/admin/panel/${banner.id}`}
                       className="flex-1 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-center text-sm"
@@ -186,6 +233,44 @@ export default function BannersListPage() {
           </div>
         )}
       </div>
+
+      {/* Add styles for rich text preview */}
+      <style jsx global>{`
+        .rich-text-preview {
+          line-height: 1.4;
+        }
+        .rich-text-preview h1, 
+        .rich-text-preview h2, 
+        .rich-text-preview h3,
+        .rich-text-preview h4 {
+          font-weight: 600;
+          margin: 0;
+          font-size: inherit;
+        }
+        .rich-text-preview p {
+          margin: 0;
+        }
+        .rich-text-preview strong,
+        .rich-text-preview b {
+          font-weight: 600;
+        }
+        .rich-text-preview em,
+        .rich-text-preview i {
+          font-style: italic;
+        }
+        .line-clamp-1 {
+          display: -webkit-box;
+          -webkit-line-clamp: 1;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        .line-clamp-2 {
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+      `}</style>
     </div>
   )
 }

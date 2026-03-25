@@ -5,6 +5,7 @@ import Link from "next/link"
 import FlowerSection from "@/components/Flower"
 
 import { createClient } from "@/lib/supabase/client"
+
 // Types for website data from database
 interface WebsiteData {
   id: string
@@ -12,7 +13,7 @@ interface WebsiteData {
   background_color: string | null
   image: string | null
   description: string | null
-  heading: string[] | null
+  heading: string | null  // Changed from array to single string
   side_text: string | null
   vertical_text: string | null
   created_at: string | null
@@ -521,9 +522,8 @@ function AboutSection() {
   return (
     <section className="min-h-screen bg-[#faf8f6] py-12 px-4 lg:py-16 lg:px-16">
       <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-8 lg:gap-12 items-start">
-        {/* Left Content - same as before */}
+        {/* Left Content */}
         <div className="space-y-6 lg:space-y-8 order-2 lg:order-1">
-          {/* ... keep all the left content exactly the same ... */}
           <div className="flex items-center gap-2 text-[#9b8579]">
             <svg
               width="16"
@@ -639,7 +639,7 @@ function AboutSection() {
           </button>
         </div>
 
-        {/* Right Content - Image Grid - FIXED */}
+        {/* Right Content - Image Grid */}
         <div className="relative order-1 lg:order-2 mb-8 lg:mb-0">
           <div className="grid grid-cols-2 gap-2 lg:gap-4">
             {/* Top Left - Large Image */}
@@ -669,7 +669,7 @@ function AboutSection() {
               />
             </div>
 
-            {/* Bottom Left Image - FIXED: Removed negative margin that was causing overlap */}
+            {/* Bottom Left Image */}
             <div className="col-span-1">
               <img
                 src="https://wuwjfagcfhowbwqwujka.supabase.co/storage/v1/object/public/website-assets/website-images/IMG_52101.webp"
@@ -679,7 +679,7 @@ function AboutSection() {
             </div>
           </div>
 
-          {/* Stats Bar - FIXED: Adjusted positioning */}
+          {/* Stats Bar */}
           <div className="absolute -bottom-6 lg:bottom-8 left-0 right-0 lg:left-auto lg:right-0 bg-[#4a3f3a] rounded-xl px-4 lg:px-8 py-3 lg:py-4 flex items-center justify-around lg:justify-start gap-3 lg:gap-6 mx-4 lg:mx-0 lg:w-auto">
             <div className="text-center pr-3 lg:pr-6 border-r border-[#6a5f5a]">
               <div className="text-[#c9a86c] text-base lg:text-xl font-semibold">
@@ -753,7 +753,7 @@ function ContactSection() {
           {
             full_name: formData.fullName.trim(),
             email: formData.email.trim().toLowerCase(),
-            phone: formData.phone.trim() || null, // Send null if empty
+            phone: formData.phone.trim() || null,
             message: formData.message.trim(),
             is_read: false,
             created_at: new Date().toISOString(),
@@ -896,8 +896,8 @@ function ContactSection() {
           {submitStatus.type && (
             <div
               className={`mb-4 lg:mb-6 p-3 lg:p-4 rounded-lg ${submitStatus.type === 'success'
-                ? 'bg-green-50 text-green-800 border border-green-200'
-                : 'bg-red-50 text-red-800 border border-red-200'
+                  ? 'bg-green-50 text-green-800 border border-green-200'
+                  : 'bg-red-50 text-red-800 border border-red-200'
                 }`}
             >
               <div className="flex items-center gap-2">
@@ -1325,7 +1325,7 @@ interface Slide {
   backgroundColor: string
   image: string
   description: string
-  heading: string[]
+  heading: string  // Changed from array to single string
   sideText: string
   verticalText: string
 }
@@ -1376,10 +1376,10 @@ export default function HeroSlider() {
           // Transform the data to match the Slide interface
           const transformedSlides: Slide[] = data.map((item: WebsiteData) => ({
             id: item.id,
-            backgroundColor: item.background_color || '#3d4a5c', // Default color if null
-            image: item.image || '/images/flower-arrangement-1.jpg', // Default image if null
+            backgroundColor: item.background_color || '#3d4a5c',
+            image: item.image || '/images/flower-arrangement-1.jpg',
             description: item.description || 'Beautiful flower arrangements for every occasion.',
-            heading: item.heading || ['PURE FRESHNESS IN', 'EVERY PETAL'],
+            heading: item.heading || 'PURE FRESHNESS IN<br>EVERY PETAL', // Handle HTML with <br>
             sideText: item.side_text || 'SOPHISTICATION IN EVERY PETAL',
             verticalText: item.vertical_text || 'FRESH FLOWER'
           }))
@@ -1439,7 +1439,7 @@ export default function HeroSlider() {
       image: "/images/flower-arrangement-1.jpg",
       description:
         "It Is Necessary To Have A Reliable Source Of Fresh Flowers: From Wholesale Flower Markets, From Local Farms, Or Import If The Flowers Are Special....",
-      heading: ["PURE FRESHNESS IN", "EVERY PETAL"],
+      heading: "PURE FRESHNESS IN<br>EVERY PETAL",
       sideText: "SOPHISTICATION IN EVERY PETAL",
       verticalText: "FRESH FLOWER",
     },
@@ -1449,7 +1449,7 @@ export default function HeroSlider() {
       image: "/images/flower-arrangement-2.jpg",
       description:
         "I'm Very Happy With My Purchase And Will Definitely Return For Future Occasions.\" I'm Very Happy With My Purchase And Will Definitely Return For Future Occasions.\"",
-      heading: ["THE ART OF FRESH", "BLOOMS"],
+      heading: "THE ART OF FRESH<br>BLOOMS",
       sideText: "ROMANCE BLOSSOMS WITH FRESH BLOOMS",
       verticalText: "FRESH FLOWER",
     },
@@ -1459,11 +1459,23 @@ export default function HeroSlider() {
       image: "/images/flower-arrangement-3.jpg",
       description:
         "Every Bouquet Tells A Story Of Love And Care. Our Expert Florists Create Stunning Arrangements That Capture The Essence Of Nature's Beauty....",
-      heading: ["NATURE'S FINEST", "SELECTIONS"],
+      heading: "NATURE'S FINEST<br>SELECTIONS",
       sideText: "ELEGANCE IN EVERY ARRANGEMENT",
       verticalText: "FRESH FLOWER",
     },
   ]
+
+  // Function to render heading with HTML
+  const renderHeading = (heading: string) => {
+    return (
+      <h1
+        className="mb-6 lg:mb-10 font-serif text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl leading-tight tracking-wide text-white transition-opacity duration-500"
+        style={{ opacity: isTransitioning ? 0 : 1 }}
+      >
+        <div dangerouslySetInnerHTML={{ __html: heading }} />
+      </h1>
+    )
+  }
 
   // Show loading state
   if (loading) {
@@ -1696,16 +1708,8 @@ export default function HeroSlider() {
                 {slide.description}
               </p>
 
-              <h1
-                className="mb-6 lg:mb-10 font-serif text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl leading-tight tracking-wide text-white transition-opacity duration-500"
-                style={{ opacity: isTransitioning ? 0 : 1 }}
-              >
-                {slide.heading.map((line, i) => (
-                  <span key={i} className="block">
-                    {line}
-                  </span>
-                ))}
-              </h1>
+              {/* Render heading with HTML support */}
+              {renderHeading(slide.heading)}
 
               <button className="group inline-flex items-center gap-0 overflow-hidden rounded-full bg-white/90 pr-1 transition-all duration-300 hover:bg-white">
                 <span className="px-6 py-3 sm:px-4 sm:py-2 lg:px-6 lg:py-3 text-sm sm:text-xs lg:text-sm font-medium tracking-wide text-gray-800">Shop Now</span>
