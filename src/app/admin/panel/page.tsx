@@ -4,6 +4,13 @@ import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
+
+// Dynamically import CKEditor to avoid SSR issues
+const CKEditor = dynamic(
+  () => import('@ckeditor/ckeditor5-react').then(mod => mod.CKEditor),
+  { ssr: false }
+)
 
 interface Banner {
   id: string
@@ -11,9 +18,9 @@ interface Banner {
   background_color: string | null
   image: string | null
   description: string | null
-  heading: string | null  // Added heading field
-  side_text: string | null  // Added side_text
-  vertical_text: string | null  // Added vertical_text
+  heading: string | null
+  side_text: string | null
+  vertical_text: string | null
   created_at: string | null
   updated_at: string | null
 }
@@ -22,6 +29,7 @@ export default function BannersListPage() {
   const [banners, setBanners] = useState<Banner[]>([])
   const [loading, setLoading] = useState(true)         
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null)
+  const [editor, setEditor] = useState<any>(null)
   const router = useRouter()
 
   const supabase = createBrowserClient(
@@ -31,6 +39,10 @@ export default function BannersListPage() {
 
   useEffect(() => {
     fetchBanners()
+    // Load ClassicEditor only on client side
+    import('@ckeditor/ckeditor5-build-classic').then(module => {
+      setEditor(() => module.default)
+    })
   }, [])
 
   const fetchBanners = async () => {
