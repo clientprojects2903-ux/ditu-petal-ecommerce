@@ -6,6 +6,9 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 
+// Import ClassicEditor directly
+import ClassicEditor from '@ckeditor/ckeditor5-build-classic'
+
 // Dynamically import CKEditor to avoid SSR issues
 const CKEditor = dynamic(
   () => import('@ckeditor/ckeditor5-react').then(mod => mod.CKEditor),
@@ -29,7 +32,6 @@ export default function BannersListPage() {
   const [banners, setBanners] = useState<Banner[]>([])
   const [loading, setLoading] = useState(true)         
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null)
-  const [editor, setEditor] = useState<any>(null)
   const router = useRouter()
 
   const supabase = createBrowserClient(
@@ -39,10 +41,6 @@ export default function BannersListPage() {
 
   useEffect(() => {
     fetchBanners()
-    // Load ClassicEditor only on client side
-    import('@ckeditor/ckeditor5-build-classic').then(module => {
-      setEditor(() => module.default)
-    })
   }, [])
 
   const fetchBanners = async () => {
