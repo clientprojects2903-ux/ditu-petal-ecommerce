@@ -4,6 +4,17 @@ import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
+
+// Dynamically import CKEditor to avoid SSR issues
+const CKEditor = dynamic(
+  () => import('@ckeditor/ckeditor5-react').then(mod => mod.CKEditor),
+  { ssr: false }
+)
+
+// Import the editor and its types correctly
+import ClassicEditor from '@ckeditor/ckeditor5-build-classic'
+import type { Editor } from '@ckeditor/ckeditor5-core'
 
 interface Banner {
   id: string
@@ -11,11 +22,40 @@ interface Banner {
   background_color: string | null
   image: string | null
   description: string | null
-  heading: string | null  // Added heading field
-  side_text: string | null  // Added side_text
-  vertical_text: string | null  // Added vertical_text
+  heading: string | null
+  side_text: string | null
+  vertical_text: string | null
   created_at: string | null
   updated_at: string | null
+}
+
+// Define editor config outside component to prevent recreation
+const editorConfig = {
+  toolbar: {
+    items: [
+      'heading',
+      '|',
+      'bold',
+      'italic',
+      'link',
+      'bulletedList',
+      'numberedList',
+      '|',
+      'outdent',
+      'indent',
+      '|',
+      'undo',
+      'redo'
+    ]
+  },
+  heading: {
+    options: [
+      { model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
+      { model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
+      { model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
+      { model: 'heading3', view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' }
+    ]
+  }
 }
 
 export default function BannersListPage() {
