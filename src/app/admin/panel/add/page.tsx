@@ -5,6 +5,7 @@ import { createBrowserClient } from '@supabase/ssr'
 import { useDropzone } from 'react-dropzone'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 
 // Dynamically import CKEditor with no SSR
 const CKEditor = dynamic(
@@ -21,8 +22,7 @@ const CKEditor = dynamic(
   }
 )
 
-import dynamic from 'next/dynamic'
-import ClassicEditor from '@ckeditor/ckeditor5-build-classic'
+
 
 interface BannerFormData {
   name: string
@@ -109,6 +109,9 @@ function ImageUpload({ currentImage, onImageChange, label }: ImageUploadProps) {
 export default function AddBannerPage() {
   const [saving, setSaving] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [editorLoaded, setEditorLoaded] = useState(false)
+  const [EditorComponent, setEditorComponent] = useState<any>(null)
+  const [ClassicEditorModule, setClassicEditorModule] = useState<any>(null)
   const router = useRouter()
 
   const [formData, setFormData] = useState<BannerFormData>({
@@ -128,6 +131,23 @@ export default function AddBannerPage() {
 
   useEffect(() => {
     setMounted(true)
+    
+    // Dynamically load CKEditor and ClassicEditor
+    const loadEditor = async () => {
+      try {
+        const [CKEditorModule, ClassicEditorModule] = await Promise.all([
+          import('@ckeditor/ckeditor5-react'),
+          import('@ckeditor/ckeditor5-build-classic')
+        ])
+        setEditorComponent(() => CKEditorModule.CKEditor)
+        setClassicEditorModule(() => ClassicEditorModule.default)
+        setEditorLoaded(true)
+      } catch (error) {
+        console.error('Failed to load CKEditor:', error)
+      }
+    }
+    
+    loadEditor()
   }, [])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -454,18 +474,27 @@ export default function AddBannerPage() {
               </label>
               
               <div className="ckeditor-container">
-                <CKEditor
-                  editor={ClassicEditor}
-                  data={formData.heading}
-                  config={editorConfig}
-                  onChange={(event: any, editor: any) => {
-                    const data = editor.getData()
-                    handleHeadingChange(data)
-                  }}
-                  onReady={(editor: any) => {
-                    console.log('Editor is ready to use!', editor)
-                  }}
-                />
+                {editorLoaded && EditorComponent && ClassicEditorModule && (
+                  <EditorComponent
+                    editor={ClassicEditorModule}
+                    data={formData.heading}
+                    config={editorConfig}
+                    onChange={(event: any, editor: any) => {
+                      const data = editor.getData()
+                      handleHeadingChange(data)
+                    }}
+                    onReady={(editor: any) => {
+                      console.log('Editor is ready to use!', editor)
+                    }}
+                  />
+                )}
+                {!editorLoaded && (
+                  <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <div className="h-64 flex items-center justify-center">
+                      <div className="animate-pulse text-gray-400">Loading editor...</div>
+                    </div>
+                  </div>
+                )}
               </div>
               
               <div className="flex items-center justify-between text-xs text-gray-500 mt-2">
